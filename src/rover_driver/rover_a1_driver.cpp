@@ -24,6 +24,8 @@ namespace rover_hardware_interface
 
 RoverA1Driver::RoverA1Driver(const std::chrono::milliseconds activate_wait_time)
 {
+    (void)activate_wait_time;
+    
     initDrivers();
 }
 
