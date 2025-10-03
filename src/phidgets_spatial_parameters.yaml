@@ -8,7 +8,7 @@ phidgets_spatial:
   }
   hub_port: {
     type: int,
-    default_value: 0,
+    default_value: 2,
     description: "The phidgets VINT hub port to connect to.
      Only used if the spatial phidget is connected to a VINT hub. Defaults to 0."
   }

@@ -32,6 +32,9 @@
   <depend>tf2_geometry_msgs</depend>
   <depend>tf2_ros</depend>
 
+  <!-- Rover messages and services -->
+  <depend>rover_msgs</depend>
+    
   <!-- Phidgets API -->
   <depend>phidgets_api</depend>
   

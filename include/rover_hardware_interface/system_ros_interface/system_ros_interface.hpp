@@ -30,14 +30,21 @@
 #include <std_srvs/srv/set_bool.hpp>
 #include <std_srvs/srv/trigger.hpp>
 
+#include "rover_msgs/msg/driver_state_named.hpp"
+#include "rover_msgs/msg/rover_driver_state.hpp"
+
 using namespace std::placeholders;
 
 namespace rover_hardware_interface
 {
 
+// Standard messages
 using BoolMsg = std_msgs::msg::Bool;
 using SetBoolSrv = std_srvs::srv::SetBool;
 using TriggerSrv = std_srvs::srv::Trigger;
+
+// Rover messages
+using RoverDriverStateMsg = rover_msgs::msg::RoverDriverState;
 
 template <typename SrvT, typename CallbackT>
 class ROSServiceWrapper
@@ -57,7 +64,7 @@ public:
         const rclcpp::QoS & qos = rclcpp::ServicesQoS());
 
 private:
-
+    
     void callbackWrapper(SrvRequestConstPtr request, SrvResponsePtr response);
     void proccessCallback(SrvRequestConstPtr request);
 
@@ -102,6 +109,8 @@ public:
         diagnostic_updater_.broadcast(level, message);
     }
 
+    void publishRobotDriverState();
+
 protected:
 
     rclcpp::CallbackGroup::SharedPtr getOrCreateNodeCallbackGroup(const unsigned group_id, rclcpp::CallbackGroupType callback_group_type);
@@ -110,6 +119,9 @@ protected:
     std::unordered_map<unsigned, rclcpp::CallbackGroup::SharedPtr> callback_groups_;
     rclcpp::executors::MultiThreadedExecutor::UniquePtr executor_;
     std::thread executor_thread_;
+
+    rclcpp::Publisher<RoverDriverStateMsg>::SharedPtr driver_state_publisher_;
+    std::unique_ptr<realtime_tools::RealtimePublisher<RoverDriverStateMsg>>realtime_driver_state_publisher_;
 
     diagnostic_updater::Updater diagnostic_updater_;
 

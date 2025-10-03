@@ -23,8 +23,6 @@
 #include <mutex>
 #include <string>
 
-#include "lely/coapp/loop_driver.hpp"
-
 namespace rover_hardware_interface
 {
 
@@ -98,9 +96,6 @@ struct MotorDriverState
     std::int32_t pos;
     std::int16_t vel;
     std::int16_t current;
-
-    timespec pos_timestamp;
-    timespec vel_current_timestamp;
 };
 
 struct DriverState
@@ -117,37 +112,46 @@ struct DriverState
 
     std::int16_t mcu_temp;
     std::int16_t heatsink_temp;
-
-    timespec flags_current_timestamp;
-    timespec voltages_temps_timestamp;
 };
 
-class MotorDriverInterface
-{
-
-public:
-  
-    virtual MotorDriverState readState() = 0;
-
-    virtual void sendCmdVel(const std::int32_t cmd) = 0;
-
-    virtual void turnOnSafetyStop() = 0;
-};
+class MotorDriverInterface;
 
 class DriverInterface
 {
 
 public:
 
-    virtual std::future<void> boot() = 0;
+    virtual std::future<void> initialize() = 0;
+
+    virtual std::future<void> deinitialize() = 0;
 
     virtual DriverState readState() = 0;
+
+    virtual void turnOnEStop() = 0;
+
+    virtual void turnOffEStop() = 0;
 
     virtual void addMotorDriver(const MotorNames name, std::shared_ptr<MotorDriverInterface> motor_driver) = 0;
 
     virtual std::shared_ptr<MotorDriverInterface> getMotorDriver(const MotorNames name) = 0;
 
     using SharedPtr = std::shared_ptr<DriverInterface>;
+};
+
+class MotorDriverInterface
+{
+
+public:
+    
+    virtual void initialize() = 0;
+
+    virtual void deinitialize() = 0;
+
+    virtual MotorDriverState readState() = 0;
+
+    virtual void sendCmdVel(const float cmd) = 0;
+
+    virtual void turnOnSafetyStop() = 0;
 };
 
 }  // namespace rover_hardware_interface

@@ -20,10 +20,12 @@
 
 #include "rover_hardware_interface/rover_driver/driver.hpp"
 
+#include "rover_hardware_interface/rover_driver/phidget_driver/phidget_data_transformer.hpp"
+
 namespace rover_hardware_interface
 {
 
-class RobotDriverInterface
+class RoverDriverInterface
 {
 
 public:
@@ -39,6 +41,8 @@ public:
     virtual void updateMotorsState() = 0;
 
     virtual void updateDriversState() = 0;
+
+    virtual const PhidgetDriverDataTransformer & getData(const DriverNames name) = 0;
 
     virtual void sendSpeedCmd(const std::vector<float> & speeds) = 0;
 

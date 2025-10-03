@@ -66,8 +66,6 @@ public:
     return_type read(const rclcpp::Time & time, const rclcpp::Duration & /* period */) override;
     return_type write(const rclcpp::Time & /* time */, const rclcpp::Duration & /* period */) override;
 
-    virtual void updateHwStates() = 0;
-
 protected:
 
     void checkJointSize() const;
@@ -75,7 +73,20 @@ protected:
     void setInitialValues();
     void checkInterfaces() const;
 
-    void configureRobotDriver();
+    void readDrivetrainSettings();
+    void readDriverStatesUpdateFrequency();
+    void readDriverInitAndActivationAttempts();
+
+    void configureRoverDriver();
+    virtual void defineRoverDriver() = 0;
+
+    void updateMotorsState(const rclcpp::Time & time);
+    void updateDriverState();
+    virtual void updateHwStates(const rclcpp::Time & time) = 0;
+
+    void handleRoverDriverWriteOperation(std::function<void()> write_operation);
+
+    virtual std::vector<float> getSpeedCmd() const = 0;
 
     const size_t joint_size_;
 
@@ -87,11 +98,27 @@ protected:
     std::vector<double> hw_states_velocities_;
     std::vector<double> hw_states_efforts_;
 
+    // Rover driver interface
+    std::shared_ptr<RoverDriverInterface> rover_driver_;
+    
+    // Drive train system settings
+    DrivetrainSettings drivetrain_settings_;
+
     // ROS hardware interface 
     std::unique_ptr<SystemROSInterface> system_ros_interface_;
 
+    // Imported from URDF
+    unsigned max_rover_driver_initialization_attempts_;
+    unsigned max_rover_driver_activation_attempts_;
+
     rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
     rclcpp::Clock steady_clock_{RCL_STEADY_TIME};
+
+    // Write operation lock
+    std::shared_ptr<std::mutex> rover_driver_write_mtx_;
+
+    rclcpp::Time next_driver_state_update_time_{0, 0, RCL_STEADY_TIME};
+    rclcpp::Duration driver_states_update_period_{0, 0};
 };
 
 }  // namespace rover_hardware_interface

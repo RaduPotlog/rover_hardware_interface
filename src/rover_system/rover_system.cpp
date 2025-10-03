@@ -29,6 +29,8 @@
 #include "rover_hardware_interface/rover_driver/rover_a1_driver.hpp"
 #include "rover_hardware_interface/system_ros_interface/system_ros_interface.hpp"
 
+#include "rover_hardware_interface/utils.hpp"
+
 namespace rover_hardware_interface
 {
 
@@ -57,13 +59,22 @@ CallbackReturn RoverSystem::on_init(const hardware_interface::HardwareComponentI
         return CallbackReturn::ERROR;
     }
 
+    try {
+        readDrivetrainSettings();
+        readDriverStatesUpdateFrequency();
+        readDriverInitAndActivationAttempts();
+    } catch (const std::invalid_argument & e) {
+        RCLCPP_ERROR_STREAM(logger_, "An exception occurred while reading the parameters: " << e.what());
+        return CallbackReturn::ERROR;
+    }
+
     return CallbackReturn::SUCCESS;
 }
 
 CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 {
     try {
-        configureRobotDriver();
+        configureRoverDriver();
     } catch (const std::runtime_error & e) {
         RCLCPP_ERROR_STREAM(logger_, "Failed to initialize motors controllers. Error: " << e.what());
         return CallbackReturn::ERROR;
@@ -74,6 +85,13 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
     std::fill(hw_states_velocities_.begin(), hw_states_velocities_.end(), 0.0);
     std::fill(hw_states_efforts_.begin(), hw_states_efforts_.end(), 0.0);
 
+    if (!operationWithAttempts(std::bind(&RoverDriverInterface::activate, rover_driver_), 
+        max_rover_driver_activation_attempts_)) {
+            RCLCPP_ERROR_STREAM(logger_, "Failed to activate Rover System: Couldn't activate RoverDriver in " 
+                                         << max_rover_driver_activation_attempts_ << " attempts.");
+        return CallbackReturn::ERROR;
+    }
+
     system_ros_interface_ = std::make_unique<SystemROSInterface>("hardware_controller");
 
     return CallbackReturn::SUCCESS;
@@ -81,6 +99,9 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 
 CallbackReturn RoverSystem::on_cleanup(const rclcpp_lifecycle::State &)
 {
+    rover_driver_->deinitialize();
+    rover_driver_.reset();
+    
     system_ros_interface_.reset();
 
     return CallbackReturn::SUCCESS;
@@ -98,6 +119,9 @@ CallbackReturn RoverSystem::on_deactivate(const rclcpp_lifecycle::State &)
 
 CallbackReturn RoverSystem::on_shutdown(const rclcpp_lifecycle::State &)
 {
+    rover_driver_->deinitialize();
+    rover_driver_.reset();
+
     system_ros_interface_.reset();
 
     return CallbackReturn::SUCCESS;
@@ -105,8 +129,16 @@ CallbackReturn RoverSystem::on_shutdown(const rclcpp_lifecycle::State &)
 
 CallbackReturn RoverSystem::on_error(const rclcpp_lifecycle::State &)
 {
-  
-    system_ros_interface_.reset();
+    if (system_ros_interface_) {
+        system_ros_interface_->broadcastOnDiagnosticTasks(
+            diagnostic_msgs::msg::DiagnosticStatus::ERROR,
+            "An error has occurred during a node state transition.");
+
+        system_ros_interface_.reset();
+    }
+    
+    rover_driver_->deinitialize();
+    rover_driver_.reset();
 
     return CallbackReturn::SUCCESS;
 }
@@ -141,12 +173,29 @@ std::vector<CommandInterface> RoverSystem::export_command_interfaces()
 
 return_type RoverSystem::read(const rclcpp::Time & time, const rclcpp::Duration & /* period */)
 {
-    (void)time;
+    updateMotorsState(time);
+
+    if (time >= next_driver_state_update_time_) {
+        updateDriverState();
+        // TODO: updateDriverStateMsg();
+        system_ros_interface_->publishRobotDriverState();
+        next_driver_state_update_time_ = time + driver_states_update_period_;
+    }
+
     return return_type::OK;
 }
 
 return_type RoverSystem::write(const rclcpp::Time & /* time */, const rclcpp::Duration & /* period */)
 {
+    const auto lifecycle_state = this->get_lifecycle_state().id();
+    
+    if (lifecycle_state == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+        handleRoverDriverWriteOperation([this] {
+            const auto speed_cmds = getSpeedCmd();
+            rover_driver_->sendSpeedCmd(speed_cmds);
+        });
+    }
+
     return return_type::OK;
 }
 
@@ -157,31 +206,6 @@ void RoverSystem::checkJointSize() const
             "Wrong number of joints defined: " + std::to_string(info_.joints.size()) + ", " +
             std::to_string(joint_size_) + " expected.");
     }
-}
-
-bool checkIfJointNameContainValidSequence(const std::string & name, const std::string & sequence)
-{
-    const std::size_t pos = name.find(sequence);
-    
-    if (pos == std::string::npos) {
-        return false;
-    }
-
-    if (pos >= 1) {
-        const std::size_t id_before_sequence = pos - 1;
-        
-        if (name[id_before_sequence] != '_' && name[id_before_sequence] != '/') {
-            return false;
-        }
-    }
-
-    const std::size_t id_after_sequence = pos + sequence.length();
-        
-    if (id_after_sequence < name.length() && name[id_after_sequence] != '_') {
-        return false;
-    }
-
-    return true;
 }
 
 void RoverSystem::sortAndCheckJointNames()
@@ -257,9 +281,97 @@ void RoverSystem::checkInterfaces() const
     }
 }
 
-void RoverSystem::configureRobotDriver()
+void RoverSystem::readDrivetrainSettings()
 {
-    RCLCPP_INFO(logger_, "Successfully configured robot driver");
+    drivetrain_settings_.motor_torque_constant =
+        std::stof(info_.hardware_parameters["motor_torque_constant"]);
+    drivetrain_settings_.gear_ratio =
+        std::stof(info_.hardware_parameters["gear_ratio"]);
+    drivetrain_settings_.gearbox_efficiency =
+        std::stof(info_.hardware_parameters["gearbox_efficiency"]);
+    drivetrain_settings_.encoder_resolution =
+        std::stof(info_.hardware_parameters["encoder_resolution"]);
+    drivetrain_settings_.max_rpm_motor_speed =
+        std::stof(info_.hardware_parameters["max_rpm_motor_speed"]);
 }
 
-}  // namespace rover_ugv_hardware_interface
+void RoverSystem::readDriverStatesUpdateFrequency()
+{
+    const float driver_states_update_frequency = 
+        std::stof(info_.hardware_parameters["driver_states_update_frequency"]);
+    driver_states_update_period_ = 
+        rclcpp::Duration::from_seconds(1.0f / driver_states_update_frequency);
+}
+
+void RoverSystem::readDriverInitAndActivationAttempts()
+{
+    max_rover_driver_initialization_attempts_ =
+        std::stoi(info_.hardware_parameters["max_rover_driver_initialization_attempts"]);
+    max_rover_driver_activation_attempts_ =
+        std::stoi(info_.hardware_parameters["max_rover_driver_activation_attempts"]);
+}
+
+void RoverSystem::configureRoverDriver()
+{
+    rover_driver_write_mtx_ = std::make_shared<std::mutex>();
+
+    defineRoverDriver();
+
+    if (!operationWithAttempts(
+            std::bind(&RoverDriverInterface::initialize, rover_driver_),
+            max_rover_driver_initialization_attempts_,
+            std::bind(&RoverDriverInterface::deinitialize, rover_driver_))) {
+        throw std::runtime_error("Rover drivers initialization failed.");
+    }
+
+    RCLCPP_INFO(logger_, "Successfully configured rover driver");
+}
+
+void RoverSystem::updateMotorsState(const rclcpp::Time & time)
+{
+    try {
+        rover_driver_->updateMotorsState();
+        updateHwStates(time);
+    } catch (const std::runtime_error & e) {
+        RCLCPP_ERROR_STREAM_THROTTLE(
+            logger_, steady_clock_, 5000,
+            "An exception occurred while updating motors states: " << e.what());
+    }
+}
+
+void RoverSystem::updateDriverState()
+{
+    try {
+        rover_driver_->updateDriversState();
+    } catch (const std::runtime_error & e) {
+        RCLCPP_ERROR_STREAM_THROTTLE(
+            logger_, steady_clock_, 5000,
+            "An exception occurred while updating drivers states: " << e.what());
+    }
+}
+
+void RoverSystem::handleRoverDriverWriteOperation(std::function<void()> write_operation)
+{
+    try {
+        {
+            std::unique_lock<std::mutex> driver_write_lck(
+                *rover_driver_write_mtx_, std::defer_lock);
+            
+            if (!driver_write_lck.try_lock()) {
+                throw std::runtime_error(
+                "Can't acquire mutex for writing commands");
+            }
+            
+            write_operation();
+        }
+        
+        // TODO: update error
+    
+    } catch (const std::runtime_error & e) {
+        RCLCPP_WARN_STREAM(logger_, "An exception occurred while writing commands: " << e.what());
+        
+        // TODO: update error
+    }
+}
+
+}  // namespace rover_hardware_interface

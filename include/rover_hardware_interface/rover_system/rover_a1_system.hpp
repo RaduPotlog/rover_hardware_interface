@@ -34,15 +34,21 @@ public:
 
     ~RoverA1System() = default;
 
-    void initRobotDriver();
-
 protected:
+    
+    void defineRoverDriver() override;
 
-    void updateHwStates() override;
+    void updateHwStates(const rclcpp::Time & time) override;
 
-    std::vector<float> getSpeedCommands() const;
+    std::vector<float> getSpeedCmd() const;
 
     static const inline std::vector<std::string> joints_ = {"fl", "fr", "rl", "rr"};
+
+    // Write operation lock
+    std::shared_ptr<std::mutex> rover_driver_write_mtx_;
+
+    rclcpp::Clock steady_clock_{RCL_STEADY_TIME};
+    rclcpp::Time last_time_{0, 0, RCL_STEADY_TIME};
 };
 
 }  // namespace rover_hardware_interface

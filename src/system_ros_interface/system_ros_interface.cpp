@@ -78,6 +78,9 @@ SystemROSInterface::SystemROSInterface(const std::string & node_name, const rclc
         executor_->spin(); }
     );
 
+    driver_state_publisher_ = node_->create_publisher<RoverDriverStateMsg>("hardware_interface/rover_driver_state", 5);
+    realtime_driver_state_publisher_ = std::make_unique<realtime_tools::RealtimePublisher<RoverDriverStateMsg>>(driver_state_publisher_);
+
     diagnostic_updater_.setHardwareID("Rover System");
 
     RCLCPP_INFO(rclcpp::get_logger("RoverSystem"), "Node constructed successfully.");
@@ -95,8 +98,18 @@ SystemROSInterface::~SystemROSInterface()
         executor_.reset();
     }
 
+    realtime_driver_state_publisher_.reset();
+    driver_state_publisher_.reset();
+
     service_wrappers_storage_.clear();
     node_.reset();
+}
+
+void SystemROSInterface::publishRobotDriverState()
+{
+    if (realtime_driver_state_publisher_->trylock()) {
+        realtime_driver_state_publisher_->unlockAndPublish();
+    }
 }
 
 rclcpp::CallbackGroup::SharedPtr SystemROSInterface::getOrCreateNodeCallbackGroup(

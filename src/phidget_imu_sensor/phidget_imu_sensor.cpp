@@ -118,7 +118,7 @@ CallbackReturn PhidgetImuSensor::on_activate(const rclcpp_lifecycle::State &)
     try {
         if (!spatial_) {
             spatial_ = std::make_unique<phidgets::Spatial>(
-            params_.serial, params_.hub_port, false,
+            params_.serial, 2, false,
             std::bind(&PhidgetImuSensor::spatialDataCallback, this, _1, _2, _3, _4), nullptr,
             std::bind(&PhidgetImuSensor::spatialAttachCallback, this),
             std::bind(&PhidgetImuSensor::spatialDetachCallback, this));

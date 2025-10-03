@@ -31,32 +31,54 @@ RoverA1System::RoverA1System()
 
 }
 
-void RoverA1System::initRobotDriver()
+void RoverA1System::defineRoverDriver()
 {
-    // robot_driver_ = std::make_shared<RoverA1Driver>();
+    rover_driver_ = std::make_shared<RoverA1Driver>(drivetrain_settings_);
 }
 
-void RoverA1System::updateHwStates()
+void RoverA1System::updateHwStates(const rclcpp::Time & time)
 {
-    hw_states_positions_[0] = 0;
-    hw_states_positions_[1] = 0;
-    hw_states_positions_[2] = 0;
-    hw_states_positions_[3] = 0;
+    const auto data = rover_driver_->getData(DriverNames::DEFAULT);
 
-    hw_states_velocities_[0] = 0;
-    hw_states_velocities_[1] = 0;
-    hw_states_velocities_[2] = 0;
-    hw_states_velocities_[3] = 0;
+    const auto left = data.getMotorState(MotorChannels::LEFT);
+    const auto right = data.getMotorState(MotorChannels::RIGHT);
 
-    hw_states_efforts_[0] = 0;
-    hw_states_efforts_[1] = 0;
-    hw_states_efforts_[2] = 0;
-    hw_states_efforts_[3] = 0;
+    // hw_states_positions_[0] = left.getPosition();
+    // hw_states_positions_[1] = right.getPosition();
+    // hw_states_positions_[2] = left.getPosition();
+    // hw_states_positions_[3] = right.getPosition();
+
+    // hw_states_velocities_[0] = left.getVelocity();
+    // hw_states_velocities_[1] = right.getVelocity();
+    // hw_states_velocities_[2] = left.getVelocity();
+    // hw_states_velocities_[3] = right.getVelocity();
+
+    //TODO: Compile switch for open loop and closed loop
+    rclcpp::Duration period = time - last_time_;
+    last_time_ = time;
+    double period_sec = period.seconds();
+
+    for (size_t i = 0; i < hw_states_positions_.size(); ++i) {
+        hw_states_positions_[i] += hw_commands_velocities_[i] * period_sec;
+    }
+
+    for (size_t i = 0; i < hw_states_velocities_.size(); ++i) {
+        hw_states_velocities_[i] = hw_commands_velocities_[i];
+    }
+
+    hw_states_efforts_[0] = left.getTorque();
+    hw_states_efforts_[1] = right.getTorque();
+    hw_states_efforts_[2] = left.getTorque();
+    hw_states_efforts_[3] = right.getTorque();
 }
 
-std::vector<float> RoverA1System::getSpeedCommands() const
+std::vector<float> RoverA1System::getSpeedCmd() const
 {
-    return {static_cast<float>(hw_commands_velocities_[0]), static_cast<float>(hw_commands_velocities_[1])};
+    return { static_cast<float>(hw_commands_velocities_[0]), 
+             static_cast<float>(hw_commands_velocities_[1]),
+             static_cast<float>(hw_commands_velocities_[2]),
+             static_cast<float>(hw_commands_velocities_[3])
+           };
 }
 
 }  // namespace rover_hardware_interface

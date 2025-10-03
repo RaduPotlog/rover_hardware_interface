@@ -25,6 +25,7 @@ set(PACKAGE_DEPENDENCIES
     geometry_msgs
     hardware_interface
     imu_filter_madgwick
+    rover_msgs
     phidgets_api
     PkgConfig
     pluginlib
@@ -54,10 +55,14 @@ pkg_check_modules(LIBGPIOD REQUIRED IMPORTED_TARGET libgpiodcxx)
 add_library(
     ${PROJECT_NAME} SHARED
     src/phidget_imu_sensor/phidget_imu_sensor.cpp
+    src/rover_driver/phidget_driver/phidget_motor_driver.cpp
+    src/rover_driver/phidget_driver/phidget_rover_driver.cpp
+    src/rover_driver/phidget_driver/phidget_data_transformer.cpp
     src/rover_driver/rover_a1_driver.cpp
     src/rover_system/rover_a1_system.cpp
     src/rover_system/rover_system.cpp
     src/system_ros_interface/system_ros_interface.cpp
+    src/utils.cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})

@@ -19,25 +19,29 @@
 #include <memory>
 #include <vector>
 
+#include "rover_hardware_interface/rover_driver/phidget_driver/phidget_rover_driver.hpp"
+
 namespace rover_hardware_interface
 {
 
-class RoverA1Driver
+class RoverA1Driver : public PhidgetRoverDriver
 {
 
 public:
 
-    RoverA1Driver(const std::chrono::milliseconds activate_wait_time = std::chrono::milliseconds(1000));
+    RoverA1Driver(
+        const DrivetrainSettings & drivetrain_settings,
+        const std::chrono::milliseconds activate_wait_time = std::chrono::milliseconds(1000));
 
     ~RoverA1Driver() = default;
 
-    void setSpeed(const std::vector<float> & speeds);
+    void sendSpeedCmd(const std::vector<float> & speeds);
 
     void attemptErrorFlagReset();
 
 protected:
   
-    void initDrivers();
+    void defineDrivers() override;
 };
 
 }  // namespace rover_hardware_interface
