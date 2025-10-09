@@ -33,6 +33,9 @@
 #include "rover_msgs/msg/driver_state_named.hpp"
 #include "rover_msgs/msg/rover_driver_state.hpp"
 
+#include "rover_hardware_interface/rover_driver/driver.hpp"
+#include "rover_hardware_interface/rover_driver/phidget_driver/phidget_data_transformer.hpp"
+
 using namespace std::placeholders;
 
 namespace rover_hardware_interface
@@ -45,6 +48,7 @@ using TriggerSrv = std_srvs::srv::Trigger;
 
 // Rover messages
 using RoverDriverStateMsg = rover_msgs::msg::RoverDriverState;
+using DriverStateNamedMsg = rover_msgs::msg::DriverStateNamed;
 
 template <typename SrvT, typename CallbackT>
 class ROSServiceWrapper
@@ -109,11 +113,23 @@ public:
         diagnostic_updater_.broadcast(level, message);
     }
 
+    void updateMsgErrorFlags(
+        const DriverNames name, 
+        const PhidgetDriverDataTransformer & data);
+
+    void updateMsgDriversStates(
+        const DriverNames name, 
+        const PhidgetDriverStateTransformer & state);
+
     void publishRobotDriverState();
 
 protected:
 
     rclcpp::CallbackGroup::SharedPtr getOrCreateNodeCallbackGroup(const unsigned group_id, rclcpp::CallbackGroupType callback_group_type);
+
+    DriverStateNamedMsg & getDriverStateByName(
+        RoverDriverStateMsg & robot_driver_state, 
+        const DriverNames name);
 
     rclcpp::Node::SharedPtr node_;
     std::unordered_map<unsigned, rclcpp::CallbackGroup::SharedPtr> callback_groups_;

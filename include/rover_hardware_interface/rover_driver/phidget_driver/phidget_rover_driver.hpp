@@ -29,8 +29,7 @@ namespace rover_hardware_interface
 
 struct MotorChannels
 {
-    static constexpr std::uint8_t LEFT = PhidgetDriver::motorChannel1;
-    static constexpr std::uint8_t RIGHT = PhidgetDriver::motorChannel2;
+    static constexpr std::uint8_t DEFAULT = PhidgetDriver::motorChannelDefault;
 };
 
 class PhidgetRoverDriver : public RoverDriverInterface
@@ -56,8 +55,6 @@ public:
 
     void updateDriversState() override;
 
-    void sendSpeedCmd(const std::vector<float> & speeds) override;
-
     void attemptErrorFlagReset() override;
 
     bool isCommunicationError() override;
@@ -81,8 +78,7 @@ private:
 
     void setMotorsStates(
         PhidgetDriverDataTransformer & data, 
-        const MotorDriverState & left_state, 
-        const MotorDriverState & right_state,
+        const MotorDriverState & state,
         const timespec & current_time);
     
     void setDriverState(

@@ -27,23 +27,19 @@ namespace rover_hardware_interface
 {
 
 enum class MotorNames {
-    LEFT = 0,
-    RIGHT,
+    DEFAULT = 0, 
 };
 
 enum class DriverNames {
-    DEFAULT = 0,
-    FRONT,
-    REAR,
+    REAR_LEFT = 0,   
+    REAR_RIGHT,
 };
 
 inline std::string motorNamesToString(const MotorNames motor_name)
 {
     switch (motor_name) {
-        case MotorNames::LEFT:
-            return "left";
-        case MotorNames::RIGHT:
-            return "right";
+        case MotorNames::DEFAULT:
+            return "default";
         default:
             return "unknown";
     }
@@ -52,12 +48,10 @@ inline std::string motorNamesToString(const MotorNames motor_name)
 inline std::string driverNamesToString(const DriverNames driver_name)
 {
     switch (driver_name) {
-        case DriverNames::DEFAULT:
-            return "default";
-        case DriverNames::FRONT:
-            return "front";
-        case DriverNames::REAR:
-            return "rear";
+        case DriverNames::REAR_RIGHT:
+            return "rear_right";
+        case DriverNames::REAR_LEFT:
+            return "rear_left";
         default:
             return "unknown";
     }
@@ -101,17 +95,9 @@ struct MotorDriverState
 struct DriverState
 {
     std::uint8_t fault_flags;
-    std::uint8_t script_flags;
-    std::uint8_t runtime_stat_flag_channel_1;
-    std::uint8_t runtime_stat_flag_channel_2;
-
-    std::int16_t battery_current_1;
-    std::int16_t battery_current_2;
-
-    std::uint16_t battery_voltage;
-
-    std::int16_t mcu_temp;
-    std::int16_t heatsink_temp;
+    std::uint8_t runtime_stat_flag;
+    std::int16_t driver_current;
+    std::int16_t temp;
 };
 
 class MotorDriverInterface;
@@ -123,13 +109,7 @@ public:
 
     virtual std::future<void> initialize() = 0;
 
-    virtual std::future<void> deinitialize() = 0;
-
     virtual DriverState readState() = 0;
-
-    virtual void turnOnEStop() = 0;
-
-    virtual void turnOffEStop() = 0;
 
     virtual void addMotorDriver(const MotorNames name, std::shared_ptr<MotorDriverInterface> motor_driver) = 0;
 
@@ -145,13 +125,9 @@ public:
     
     virtual void initialize() = 0;
 
-    virtual void deinitialize() = 0;
-
     virtual MotorDriverState readState() = 0;
 
     virtual void sendCmdVel(const float cmd) = 0;
-
-    virtual void turnOnSafetyStop() = 0;
 };
 
 }  // namespace rover_hardware_interface

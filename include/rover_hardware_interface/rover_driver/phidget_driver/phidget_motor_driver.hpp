@@ -27,6 +27,8 @@
 
 #include <libphidget22/phidget22.h>
 
+#include <rclcpp/rclcpp.hpp>
+
 #include "rover_hardware_interface/rover_driver/driver.hpp"
 
 namespace rover_hardware_interface
@@ -37,22 +39,13 @@ class PhidgetDriver : public DriverInterface
     
 public:
 
-    static constexpr std::uint8_t motorChannel1 = 0;
-    static constexpr std::uint8_t motorChannel2 = 1;
-    static constexpr std::uint8_t motorChannel3 = 3;
-    static constexpr std::uint8_t motorChannel4 = 4;
+    static constexpr std::uint8_t motorChannelDefault = 0;
 
     PhidgetDriver();
 
     std::future<void> initialize() override;
 
-    std::future<void> deinitialize() override;
-
     DriverState readState() override;
-
-    void turnOnEStop() override;
-
-    void turnOffEStop() override;
 
     void addMotorDriver(const MotorNames name, std::shared_ptr<MotorDriverInterface> motor_driver) override;
 
@@ -73,24 +66,26 @@ public:
 
     PhidgetMotorDriver(std::weak_ptr<PhidgetDriver> driver, const std::uint8_t channel, const std::int32_t serial_number);
 
-    void initialize() override;
+    ~PhidgetMotorDriver();
 
-    void deinitialize() override;
+    void initialize() override;
 
     MotorDriverState readState() override;
 
     void sendCmdVel(const float cmd) override;
 
-    void turnOnSafetyStop() override;
-
 private:
     
+    static void CCONV setTargetVelocityHandler(PhidgetHandle phid, void *ctx, PhidgetReturnCode res);
+
     std::weak_ptr<PhidgetDriver> driver_;
 
     const std::uint8_t channel_;
     std::int32_t serial_number_;
 
     PhidgetDCMotorHandle motor_handle_{nullptr};
+
+    rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
 };
 
 } // namespace rover_hardware_interface

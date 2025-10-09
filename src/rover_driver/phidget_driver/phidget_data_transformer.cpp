@@ -22,6 +22,98 @@
 namespace rover_hardware_interface
 {
 
+FlagError::FlagError(
+    const std::vector<std::string> & flag_names,
+    const std::vector<std::string> & suppressed_flags_names)
+: flag_names_(flag_names)
+{
+    for (size_t i = 0; i < suppressed_flags_names.size(); ++i) {
+        for (size_t j = 0; j < flag_names_.size(); ++j) {
+            if (suppressed_flags_names[i] == flag_names_[j]) {
+                suppressed_flags_.set(j);
+            }
+        }
+    }
+}
+
+std::string FlagError::getErrorLog() const
+{
+    std::string error_msg = "";
+  
+    for (std::size_t i = 0; i < flag_names_.size(); i++) {
+        if ((flags_ & (~suppressed_flags_)).test(i)) {
+            error_msg += flag_names_[i] + " ";
+        }
+    }
+  
+    return error_msg;
+}
+
+FaultFlag::FaultFlag()
+: FlagError(
+    {
+        "emergency_stop",
+        "motor_setup_fault",
+    }
+)
+{
+
+}
+
+rover_msgs::msg::FaultFlag FaultFlag::getMessage() const
+{
+  rover_msgs::msg::FaultFlag fault_flags_msg;
+
+    fault_flags_msg.emergency_stop = flags_.test(4);
+    fault_flags_msg.motor_setup_fault = flags_.test(5);
+
+    return fault_flags_msg;
+}
+
+std::map<std::string, bool> FaultFlag::getErrorMap() const
+{
+    std::map<std::string, bool> error_map;
+        
+    for (std::size_t i = 0; i < flag_names_.size(); i++) {
+        error_map["fault_flag." + flag_names_[i]] = flags_.test(i);
+    }
+
+    return error_map;
+}
+
+RuntimeError::RuntimeError()
+: FlagError(
+    {
+      "safety_stop_active",
+    },
+    {
+      "safety_stop_active",
+    }
+)
+{
+
+}
+
+rover_msgs::msg::RuntimeError RuntimeError::getMessage() const
+{
+    rover_msgs::msg::RuntimeError runtime_errors_msg;
+
+    runtime_errors_msg.safety_stop_active = flags_.test(1);
+
+    return runtime_errors_msg;
+}
+
+std::map<std::string, bool> RuntimeError::getErrorMap() const
+{
+    std::map<std::string, bool> error_map;
+  
+    for (std::size_t i = 0; i < flag_names_.size(); i++) {
+        error_map["runtime_error." + flag_names_[i]] = flags_.test(i);
+    }
+
+    return error_map;
+}
+
 PhidgetVelocityCommandDataTransformer::PhidgetVelocityCommandDataTransformer(
     const DrivetrainSettings & drivetrain_settings)
 {
@@ -69,39 +161,38 @@ float PhidgetMotorStateTransformer::getTorque() const
 }
 
 PhidgetDriverDataTransformer::PhidgetDriverDataTransformer(const DrivetrainSettings & drivetrain_settings)
-: channel_1_motor_state_(drivetrain_settings)
-, channel_2_motor_state_(drivetrain_settings)
+: motor_state_(drivetrain_settings)
 {
 
 }
 
 void PhidgetDriverDataTransformer::setMotorsStates(
-    const MotorDriverState & channel_1_state, 
-    const MotorDriverState & channel_2_state,
+    const MotorDriverState & state,
     const bool data_timed_out)
 {
-    channel_1_motor_state_.setData(channel_1_state);
-    channel_2_motor_state_.setData(channel_2_state);
-  
+    motor_state_.setData(state);
+    
     motor_states_data_timed_out_ = data_timed_out;
 }
 
 void PhidgetDriverDataTransformer::setDriverState(
     const DriverState & state, 
     const bool data_timed_out)
-{
-    (void)state;
+{    
+    driver_state_.setTemperature(state.temp);
+    driver_state_.setDriverCurrent(state.driver_current);
+
+    fault_flags_.setData(state.fault_flags);
+    runtime_error_.setData(state.runtime_stat_flag);
     
-    // TODO: set driver state
     driver_state_data_timed_out_ = data_timed_out;
 }
 
-const PhidgetMotorStateTransformer & PhidgetDriverDataTransformer::getMotorState(const std::uint8_t channel) const
+const PhidgetMotorStateTransformer & PhidgetDriverDataTransformer::getMotorState(
+    const std::uint8_t channel) const
 {
-    if (channel == PhidgetDriver::motorChannel1) {
-        return channel_1_motor_state_;
-    } else if (channel == PhidgetDriver::motorChannel2) {
-        return channel_2_motor_state_;
+    if (channel == PhidgetDriver::motorChannelDefault) {
+        return motor_state_;
     }
 
     throw std::runtime_error("Invalid channel number");
@@ -110,6 +201,20 @@ const PhidgetMotorStateTransformer & PhidgetDriverDataTransformer::getMotorState
 const PhidgetDriverStateTransformer & PhidgetDriverDataTransformer::getDriverState() const 
 { 
     return driver_state_;
+}
+
+const FaultFlag & PhidgetDriverDataTransformer::getFaultFlag() const 
+{ 
+    return fault_flags_; 
+}
+
+const RuntimeError & PhidgetDriverDataTransformer::getRuntimeError(const std::uint8_t channel) const
+{
+    if (channel == PhidgetDriver::motorChannelDefault) {
+        return runtime_error_;
+    }
+
+    throw std::runtime_error("Invalid channel number");
 }
 
 } // namespace rover_hardware_interface

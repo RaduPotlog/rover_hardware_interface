@@ -38,20 +38,11 @@ void RoverA1System::defineRoverDriver()
 
 void RoverA1System::updateHwStates(const rclcpp::Time & time)
 {
-    const auto data = rover_driver_->getData(DriverNames::DEFAULT);
+    const auto rear_left_data = rover_driver_->getData(DriverNames::REAR_LEFT);
+    const auto rear_right_data = rover_driver_->getData(DriverNames::REAR_RIGHT);
 
-    const auto left = data.getMotorState(MotorChannels::LEFT);
-    const auto right = data.getMotorState(MotorChannels::RIGHT);
-
-    // hw_states_positions_[0] = left.getPosition();
-    // hw_states_positions_[1] = right.getPosition();
-    // hw_states_positions_[2] = left.getPosition();
-    // hw_states_positions_[3] = right.getPosition();
-
-    // hw_states_velocities_[0] = left.getVelocity();
-    // hw_states_velocities_[1] = right.getVelocity();
-    // hw_states_velocities_[2] = left.getVelocity();
-    // hw_states_velocities_[3] = right.getVelocity();
+    const auto rear_left = rear_left_data.getMotorState(MotorChannels::DEFAULT);
+    const auto rear_right = rear_right_data.getMotorState(MotorChannels::DEFAULT);
 
     //TODO: Compile switch for open loop and closed loop
     rclcpp::Duration period = time - last_time_;
@@ -66,10 +57,28 @@ void RoverA1System::updateHwStates(const rclcpp::Time & time)
         hw_states_velocities_[i] = hw_commands_velocities_[i];
     }
 
-    hw_states_efforts_[0] = left.getTorque();
-    hw_states_efforts_[1] = right.getTorque();
-    hw_states_efforts_[2] = left.getTorque();
-    hw_states_efforts_[3] = right.getTorque();
+    hw_states_efforts_[0] = rear_left.getTorque();
+    hw_states_efforts_[1] = rear_right.getTorque();
+    hw_states_efforts_[2] = rear_left.getTorque();
+    hw_states_efforts_[3] = rear_right.getTorque();
+}
+
+void RoverA1System::updateDriverStateMsg()
+{
+    const auto driver_rear_left_data = rover_driver_->getData(DriverNames::REAR_LEFT);
+    const auto driver_rear_right_data = rover_driver_->getData(DriverNames::REAR_RIGHT);
+
+    system_ros_interface_->updateMsgDriversStates(DriverNames::REAR_LEFT, 
+        driver_rear_left_data.getDriverState());
+    system_ros_interface_->updateMsgErrorFlags(DriverNames::REAR_LEFT, 
+        driver_rear_left_data);
+    
+    system_ros_interface_->updateMsgDriversStates(DriverNames::REAR_RIGHT, 
+        driver_rear_right_data.getDriverState());
+    system_ros_interface_->updateMsgErrorFlags(DriverNames::REAR_RIGHT, 
+        driver_rear_right_data);
+    
+    // TODO: Handle communication error
 }
 
 std::vector<float> RoverA1System::getSpeedCmd() const

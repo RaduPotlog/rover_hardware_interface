@@ -177,7 +177,7 @@ return_type RoverSystem::read(const rclcpp::Time & time, const rclcpp::Duration 
 
     if (time >= next_driver_state_update_time_) {
         updateDriverState();
-        // TODO: updateDriverStateMsg();
+        updateDriverStateMsg();
         system_ros_interface_->publishRobotDriverState();
         next_driver_state_update_time_ = time + driver_states_update_period_;
     }

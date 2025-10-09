@@ -23,6 +23,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include "rover_msgs/msg/fault_flag.hpp"
+#include "rover_msgs/msg/runtime_error.hpp"
+
 #include "rover_hardware_interface/rover_driver/phidget_driver/phidget_motor_driver.hpp"
 #include "rover_hardware_interface/utils.hpp"
 
@@ -36,6 +39,55 @@ struct DrivetrainSettings
     float gearbox_efficiency;
     float encoder_resolution;
     float max_rpm_motor_speed;
+};
+
+class FlagError
+{
+
+public:
+
+    FlagError(
+        const std::vector<std::string> & flag_names,
+        const std::vector<std::string> & suppressed_flags_names = {});
+
+    virtual ~FlagError() = default;
+
+    void setData(const std::uint8_t flags) { flags_ = flags; }
+
+    bool isError() const { return (flags_ & (~suppressed_flags_)).any(); }
+
+    std::string getErrorLog() const;
+
+protected:
+
+    const std::vector<std::string> flag_names_;
+
+    std::bitset<8> suppressed_flags_ = 0;
+    std::bitset<8> flags_ = 0;
+};
+
+class FaultFlag : public FlagError
+{
+
+    public:
+    
+    FaultFlag();
+    
+    rover_msgs::msg::FaultFlag getMessage() const;
+    
+    std::map<std::string, bool> getErrorMap() const;
+};
+
+class RuntimeError : public FlagError
+{
+
+public:
+
+    RuntimeError();
+    
+    rover_msgs::msg::RuntimeError getMessage() const;
+    
+    std::map<std::string, bool> getErrorMap() const;
 };
 
 class PhidgetVelocityCommandDataTransformer
@@ -66,34 +118,35 @@ class PhidgetDriverStateTransformer
 
 public:
   
-    PhidgetDriverStateTransformer() {}
-
-    void SetTemperature(const std::int16_t temp) { temp_ = temp; };
-    void SetHeatsinkTemperature(const std::int16_t heatsink_temp) { heatsink_temp_ = heatsink_temp; };
-    void SetVoltage(const std::uint16_t voltage) { voltage_ = voltage; };
-  
-    void SetBatteryCurrent1(const std::int16_t battery_current_1)
+    PhidgetDriverStateTransformer() 
     {
-        battery_current_1_ = battery_current_1;
-    };
 
-    void SetBatteryCurrent2(const std::int16_t battery_current_2)
+    }
+
+    void setTemperature(const std::int16_t temp) 
+    { 
+        temp_ = temp; 
+    }
+    
+    void setDriverCurrent(const std::int16_t driver_current)
     {
-        battery_current_2_ = battery_current_2;
-    };
+        driver_current_ = driver_current;
+    }
 
-    float GetTemperature() const { return temp_; }
-    float GetHeatsinkTemperature() const { return heatsink_temp_; }
-    float GetVoltage() const { return voltage_ / 10.0; }
-    float GetCurrent() const { return (battery_current_1_ + battery_current_2_) / 10.0; }
+    std::int16_t getTemperature() const 
+    { 
+        return temp_;
+    }
 
+    float getDriverCurrent() const 
+    { 
+        return driver_current_;
+    }
+    
 private:
 
     std::int16_t temp_ = 0;
-    std::int16_t heatsink_temp_ = 0;
-    std::uint16_t voltage_ = 0;
-    std::int16_t battery_current_1_ = 0;
-    std::int16_t battery_current_2_ = 0;
+    float driver_current_ = 0.0;
 };
 
 class PhidgetMotorStateTransformer
@@ -126,8 +179,7 @@ public:
     PhidgetDriverDataTransformer(const DrivetrainSettings & drivetrain_settings);
 
     void setMotorsStates(
-        const MotorDriverState & channel_1_state, 
-        const MotorDriverState & channel_2_state,
+        const MotorDriverState & state,
         const bool data_timed_out);
   
     void setDriverState(const DriverState & state, const bool data_timed_out);
@@ -136,12 +188,17 @@ public:
 
     const PhidgetDriverStateTransformer & getDriverState() const;
 
+    const FaultFlag & getFaultFlag() const;
+    
+    const RuntimeError & getRuntimeError(const std::uint8_t channel) const;
+
 private:
   
-    PhidgetMotorStateTransformer channel_1_motor_state_;
-    PhidgetMotorStateTransformer channel_2_motor_state_;
-
+    PhidgetMotorStateTransformer motor_state_;
     PhidgetDriverStateTransformer driver_state_;
+
+    FaultFlag fault_flags_;
+    RuntimeError runtime_error_;
 
     bool motor_states_data_timed_out_ = false;
     bool driver_state_data_timed_out_ = false;

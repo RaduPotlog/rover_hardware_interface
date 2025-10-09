@@ -34,7 +34,8 @@ void ROSServiceWrapper<SrvT, CallbackT>::registerService(
     rclcpp::CallbackGroup::SharedPtr group, const rclcpp::QoS & qos)
 {
     service_ = node->create_service<SrvT>(
-        service_name, std::bind(&ROSServiceWrapper<SrvT, CallbackT>::callbackWrapper, this, _1, _2),
+        service_name, 
+        std::bind(&ROSServiceWrapper<SrvT, CallbackT>::callbackWrapper, this, _1, _2),
         qos, group);
 }
 
@@ -105,6 +106,32 @@ SystemROSInterface::~SystemROSInterface()
     node_.reset();
 }
 
+void SystemROSInterface::updateMsgErrorFlags(
+    const DriverNames name, 
+    const PhidgetDriverDataTransformer & data)
+{
+    auto & driver_state = realtime_driver_state_publisher_->msg_;
+    auto & driver_state_named = getDriverStateByName(driver_state, name);
+
+    driver_state.header.stamp = node_->get_clock()->now();
+
+    driver_state_named.state.fault_flag = 
+        data.getFaultFlag().getMessage();
+    driver_state_named.state.runtime_error =
+        data.getRuntimeError(PhidgetDriver::motorChannelDefault).getMessage();
+}
+
+void SystemROSInterface::updateMsgDriversStates(
+    const DriverNames name, 
+    const PhidgetDriverStateTransformer & state)
+{
+    auto & driver_state = realtime_driver_state_publisher_->msg_;
+    auto & driver_state_named = getDriverStateByName(driver_state, name);
+
+    driver_state_named.state.current = state.getDriverCurrent();
+    driver_state_named.state.temperature = state.getTemperature();
+}
+
 void SystemROSInterface::publishRobotDriverState()
 {
     if (realtime_driver_state_publisher_->trylock()) {
@@ -140,6 +167,29 @@ rclcpp::CallbackGroup::SharedPtr SystemROSInterface::getOrCreateNodeCallbackGrou
     callback_groups_[group_id] = callback_group;
   
     return callback_group;
+}
+
+DriverStateNamedMsg & SystemROSInterface::getDriverStateByName(
+    RoverDriverStateMsg & robot_driver_state,
+    const DriverNames name)
+{
+    const auto name_str = driverNamesToString(name);
+    auto & driver_states = robot_driver_state.driver_states;
+
+    auto it = std::find_if(
+        driver_states.begin(), driver_states.end(),
+        [&name_str](const DriverStateNamedMsg & msg) { 
+            return msg.name == name_str; 
+    });
+
+    if (it == driver_states.end()) {
+        DriverStateNamedMsg driver_state_named;
+        driver_state_named.name = name_str;
+        driver_states.push_back(driver_state_named);
+        it = driver_states.end() - 1;
+    }
+
+    return *it;
 }
 
 }  // namespace rover_hardware_interface

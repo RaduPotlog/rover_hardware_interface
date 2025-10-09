@@ -55,6 +55,7 @@ pkg_check_modules(LIBGPIOD REQUIRED IMPORTED_TARGET libgpiodcxx)
 add_library(
     ${PROJECT_NAME} SHARED
     src/phidget_imu_sensor/phidget_imu_sensor.cpp
+    src/rover_driver/phidget_driver/phidget_utils.cpp
     src/rover_driver/phidget_driver/phidget_motor_driver.cpp
     src/rover_driver/phidget_driver/phidget_rover_driver.cpp
     src/rover_driver/phidget_driver/phidget_data_transformer.cpp

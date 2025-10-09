@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <iostream>
+
 #include "rover_hardware_interface/rover_driver/phidget_driver/phidget_motor_driver.hpp"
 
 #include "rover_hardware_interface/rover_driver/driver.hpp"
+#include "rover_hardware_interface/rover_driver/phidget_driver/phidget_utils.hpp"
 
 namespace rover_hardware_interface
 {
@@ -22,46 +25,6 @@ namespace rover_hardware_interface
 PhidgetDriver::PhidgetDriver()
 {
 
-}
-
-void openWaitForAttachment(
-    PhidgetHandle handle, 
-    int32_t serial_number,
-    int hub_port, 
-    bool is_hub_port_device, 
-    int channel)
-{
-    PhidgetReturnCode ret;
-
-    ret = Phidget_setDeviceSerialNumber(handle, serial_number);
-    if (ret != EPHIDGET_OK)
-    {
-        throw std::runtime_error("Failed to set device serial number hub port " + std::to_string(hub_port) + " channel " + std::to_string(channel));
-    }
-
-    ret = Phidget_setHubPort(handle, hub_port);
-    if (ret != EPHIDGET_OK)
-    {
-        throw std::runtime_error("Failed to set device hub port " + std::to_string(hub_port) + " channel " + std::to_string(channel));
-    }
-
-    ret = Phidget_setIsHubPortDevice(handle, is_hub_port_device);
-    if (ret != EPHIDGET_OK)
-    {
-        throw std::runtime_error("Failed to set device is hub port " + std::to_string(hub_port) + " channel " + std::to_string(channel));
-    }
-
-    ret = Phidget_setChannel(handle, channel);
-    if (ret != EPHIDGET_OK)
-    {
-        throw std::runtime_error("Failed to set device channel hub port " + std::to_string(hub_port) + " channel " + std::to_string(channel));
-    }
-
-    ret = Phidget_openWaitForAttachment(handle, PHIDGET_TIMEOUT_DEFAULT);
-    if (ret != EPHIDGET_OK)
-    {
-        throw std::runtime_error("Failed to open device hub port " + std::to_string(hub_port) + " channel " + std::to_string(channel));
-    }
 }
 
 std::future<void> PhidgetDriver::initialize()
@@ -76,21 +39,21 @@ std::future<void> PhidgetDriver::initialize()
             motor_driver->initialize();
         } catch (const std::runtime_error & e) {
             throw std::runtime_error(
-                "Motor driver initilize exception on " + motorNamesToString(name) + 
-                " motor: " + std::string(e.what()));
+                "Motor driver initilize exception on " + 
+                motorNamesToString(name) + 
+                " motor: " + 
+                std::string(e.what()));
+        }
+    }
+
+    try {
+        init_promise_.set_value();
+    } catch (const std::future_error & e) {
+        if (e.code() == std::make_error_code(std::future_errc::promise_already_satisfied)) {
+            std::cerr << "An exception occurred while setting init promise: " << e.what() << std::endl;
         }
     }
     
-    return future;
-}
-
-std::future<void> PhidgetDriver::deinitialize()
-{
-    std::lock_guard<std::mutex> lck(init_mtx_);
-    init_promise_ = std::promise<void>();
-    
-    std::future<void> future = init_promise_.get_future();
-
     return future;
 }
 
@@ -99,29 +62,11 @@ DriverState PhidgetDriver::readState()
     DriverState state;
     
     state.fault_flags = 0;
-    state.script_flags = 0;
-    state.runtime_stat_flag_channel_1 = 0;
-    state.runtime_stat_flag_channel_2 = 0;
-
-    state.battery_current_1 = 0;
-    state.battery_current_2 = 0;
-
-    state.battery_voltage = 0;
-
-    state.mcu_temp = 0;
-    state.heatsink_temp = 0;
+    state.runtime_stat_flag = 0;
+    state.driver_current = 0;
+    state.temp = 0;
 
     return state;
-}
-
-void PhidgetDriver::turnOnEStop()
-{
-
-}
-
-void PhidgetDriver::turnOffEStop()
-{
-
 }
 
 void PhidgetDriver::addMotorDriver(
@@ -140,7 +85,9 @@ std::shared_ptr<MotorDriverInterface> PhidgetDriver::getMotorDriver(const MotorN
     auto it = motor_drivers_.find(name);
     
     if (it == motor_drivers_.end()) {
-        throw std::runtime_error("Motor driver with name '" + motorNamesToString(name) + "' does not exist");
+        throw std::runtime_error("Motor driver with name '" + 
+            motorNamesToString(name) + 
+            "' does not exist");
     }
 
     return it->second;
@@ -157,12 +104,21 @@ PhidgetMotorDriver::PhidgetMotorDriver(
 
 }
 
+PhidgetMotorDriver::~PhidgetMotorDriver()
+{
+    RCLCPP_INFO(logger_, "Destroy phidget motor driver");
+
+    PhidgetHandle handle = reinterpret_cast<PhidgetHandle>(motor_handle_);
+    closeAndDelete(&handle);
+}
+
 void PhidgetMotorDriver::initialize()
 {
     PhidgetReturnCode ret = PhidgetDCMotor_create(&motor_handle_);
     
     if (ret != EPHIDGET_OK) {
-        throw std::runtime_error("Failed to create Motor handle for channel " + std::to_string(channel_));
+        throw std::runtime_error("Failed to create Motor handle for channel " + 
+            std::to_string(channel_));
     }
 
     openWaitForAttachment(reinterpret_cast<PhidgetHandle>(motor_handle_), -1, channel_, false, 0);
@@ -172,14 +128,21 @@ void PhidgetMotorDriver::initialize()
         ret = Phidget_getDeviceSerialNumber(reinterpret_cast<PhidgetHandle>(motor_handle_), &serial_number_);
         
         if (ret != EPHIDGET_OK) {
-            throw std::runtime_error("Failed to get serial number for motor channel ");
+            throw std::runtime_error("Failed to get serial number for motor channel " + 
+                std::to_string(channel_));
         }
     }
-}
 
-void PhidgetMotorDriver::deinitialize() 
-{
+    // Try to reset fail safe
+    (void)PhidgetDCMotor_resetFailsafe(motor_handle_);
+	
+    // Enable fail safe
+    ret = PhidgetDCMotor_enableFailsafe(motor_handle_, 5000);
 
+    if (ret != EPHIDGET_OK) {
+        throw std::runtime_error("Failed to enable fail safe mode for motor channel " + 
+            std::to_string(channel_));
+    }
 }
 
 MotorDriverState PhidgetMotorDriver::readState()
@@ -193,19 +156,25 @@ MotorDriverState PhidgetMotorDriver::readState()
     return state;
 }
 
+void CCONV PhidgetMotorDriver::setTargetVelocityHandler(
+    PhidgetHandle phid, 
+    void *ctx, 
+    PhidgetReturnCode res) 
+{
+    (void)phid;
+    (void)ctx;
+    (void)res;
+}
+
 void PhidgetMotorDriver::sendCmdVel(const float cmd)
 {
     if (auto driver = driver_.lock()) {
-        PhidgetReturnCode ret = PhidgetDCMotor_setTargetVelocity(motor_handle_, cmd);
-        
-        // TODO: Process return value
-        (void)ret;
+        PhidgetDCMotor_setTargetVelocity_async(
+            motor_handle_, 
+            cmd, 
+            PhidgetMotorDriver::setTargetVelocityHandler, 
+            this);
     }
-}
-
-void PhidgetMotorDriver::turnOnSafetyStop()
-{
-
 }
 
 }  // namespace rover_hardware_interface

@@ -84,6 +84,8 @@ protected:
     void updateDriverState();
     virtual void updateHwStates(const rclcpp::Time & time) = 0;
 
+    virtual void updateDriverStateMsg() = 0;
+  
     void handleRoverDriverWriteOperation(std::function<void()> write_operation);
 
     virtual std::vector<float> getSpeedCmd() const = 0;

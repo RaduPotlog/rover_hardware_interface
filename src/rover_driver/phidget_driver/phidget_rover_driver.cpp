@@ -72,11 +72,10 @@ void PhidgetRoverDriver::activate()
 {
     for (auto & [name, driver] : drivers_) {
         try {
-            driver->getMotorDriver(MotorNames::LEFT)->sendCmdVel(0);
-            driver->getMotorDriver(MotorNames::RIGHT)->sendCmdVel(0);
+            driver->getMotorDriver(MotorNames::DEFAULT)->sendCmdVel(0);
         } catch (const std::runtime_error & e) {
             throw std::runtime_error(
-                "Send 0 command exception on " + driverNamesToString(name) + 
+                "Send command exception on " + driverNamesToString(name) + 
                 "driver : " + std::string(e.what()));
         }
     }
@@ -86,7 +85,7 @@ void PhidgetRoverDriver::activate()
 
 void PhidgetRoverDriver::updateCommunicationStatus()
 {
-
+    // TODO: Handle comm error
 }
 
 void PhidgetRoverDriver::updateMotorsState()
@@ -95,10 +94,8 @@ void PhidgetRoverDriver::updateMotorsState()
     clock_gettime(CLOCK_MONOTONIC, &current_time);
 
     for (auto & [name, driver] : drivers_) {
-        const auto left_state = driver->getMotorDriver(MotorNames::LEFT)->readState();
-        const auto right_state = driver->getMotorDriver(MotorNames::RIGHT)->readState();
-
-        setMotorsStates(data_.at(name), left_state, right_state, current_time);
+        const auto state = driver->getMotorDriver(MotorNames::DEFAULT)->readState();
+        setMotorsStates(data_.at(name), state, current_time);
     }
 }
 
@@ -110,11 +107,6 @@ void PhidgetRoverDriver::updateDriversState()
     for (auto & [name, driver] : drivers_) {
         setDriverState(data_.at(name), driver->readState(), current_time);
     }
-}
-
-void PhidgetRoverDriver::sendSpeedCmd(const std::vector<float> & speeds)
-{
-    (void)speeds;
 }
 
 void PhidgetRoverDriver::attemptErrorFlagReset()
@@ -144,8 +136,22 @@ PhidgetVelocityCommandDataTransformer & PhidgetRoverDriver::getCmdVelConverter()
 void PhidgetRoverDriver::initDrivers()
 {
     for (auto & [name, driver] : drivers_) {
+        const auto name_str = driverNamesToString(name);
+        
         try {
             auto driver_future = driver->initialize();
+            auto driver_status = driver_future.wait_for(std::chrono::seconds(1));
+
+            if (driver_status == std::future_status::ready) {
+                try {
+                    driver_future.get();
+                } catch (const std::exception & e) {
+                    throw std::runtime_error(
+                        "Init driver for " + name_str + " driver failed with exception: " + std::string(e.what()));
+                }
+            } else {
+                throw std::runtime_error("Init driver for " + name_str + " driver timed out or failed.");
+            }
         } catch (const std::runtime_error & e) {
             throw std::runtime_error("Send command exception on " + driverNamesToString(name) + " driver: " + std::string(e.what()));
         }
@@ -154,8 +160,7 @@ void PhidgetRoverDriver::initDrivers()
 
 void PhidgetRoverDriver::setMotorsStates(
     PhidgetDriverDataTransformer & data, 
-    const MotorDriverState & left_state, 
-    const MotorDriverState & right_state,
+    const MotorDriverState & state,
     const timespec & current_time)
 {
     const bool data_timed_out = false;
@@ -163,7 +168,7 @@ void PhidgetRoverDriver::setMotorsStates(
     // TODO: Handle timeout
     (void)current_time;
 
-    data.setMotorsStates(right_state, left_state, data_timed_out);
+    data.setMotorsStates(state, data_timed_out);
 }
     
 void PhidgetRoverDriver::setDriverState(
