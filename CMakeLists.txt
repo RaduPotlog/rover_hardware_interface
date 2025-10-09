@@ -1,16 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 project(rover_hardware_interface)
 
-# Handle superbuild first
-option(USE_SUPERBUILD "Whether or not a superbuild should be invoked" OFF)
-
-if(USE_SUPERBUILD)
-  project(SUPERBUILD NONE)
-  include(cmake/SuperBuild.cmake)
-  return()
-else()
-  project(rover_hardware_interface)
-endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic -Wshadow -Wold-style-cast)
