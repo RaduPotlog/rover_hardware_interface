@@ -1,6 +1,6 @@
 # rover_hardware_interface
 
-The package implements system interfaces and sensor interfaces from ros2_control for Rover.
+Package implements system interfaces and sensor interfaces from ros2_control for Rover.
 
 ## Config Files
 -
