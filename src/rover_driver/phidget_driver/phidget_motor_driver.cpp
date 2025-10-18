@@ -101,12 +101,12 @@ PhidgetMotorDriver::PhidgetMotorDriver(
 , channel_(channel)
 , serial_number_(serial_number)
 {
-
+    RCLCPP_INFO(logger_, "Create phidget motor driver channel = %d", channel_);
 }
 
 PhidgetMotorDriver::~PhidgetMotorDriver()
 {
-    RCLCPP_INFO(logger_, "Destroy phidget motor driver");
+    RCLCPP_INFO(logger_, "Destroy phidget motor driver channel = %d", channel_);
 
     PhidgetHandle handle = reinterpret_cast<PhidgetHandle>(motor_handle_);
     closeAndDelete(&handle);

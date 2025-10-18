@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_HPP_
-#define ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_HPP_
+#ifndef ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_DRIVER_HPP_
+#define ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_DRIVER_HPP_
 
 #include <atomic>
 #include <chrono>
@@ -31,8 +31,10 @@ enum class MotorNames {
 };
 
 enum class DriverNames {
-    REAR_LEFT = 0,   
+    REAR_LEFT = 0,
     REAR_RIGHT,
+    FRONT_LEFT,
+    FRONT_RIGHT,
 };
 
 inline std::string motorNamesToString(const MotorNames motor_name)
@@ -52,6 +54,10 @@ inline std::string driverNamesToString(const DriverNames driver_name)
             return "rear_right";
         case DriverNames::REAR_LEFT:
             return "rear_left";
+        case DriverNames::FRONT_RIGHT:
+            return "front_right";
+        case DriverNames::FRONT_LEFT:
+            return "front_left";
         default:
             return "unknown";
     }
@@ -132,4 +138,4 @@ public:
 
 }  // namespace rover_hardware_interface
 
-#endif  // ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_HPP_
+#endif  // ROVER_HARDWARE_INTERFACE_ROVER_DRIVER_DRIVER_HPP_

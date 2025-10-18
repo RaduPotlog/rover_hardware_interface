@@ -43,10 +43,14 @@ void RoverA1Driver::sendSpeedCmd(const std::vector<float> & speeds)
 
     const auto speed_rear_left = this->getCmdVelConverter().convert(speeds.at(0));
     const auto speed_rear_right = this->getCmdVelConverter().convert(speeds.at(1));
+    const auto speed_front_left = this->getCmdVelConverter().convert(speeds.at(2));
+    const auto speed_front_right = this->getCmdVelConverter().convert(speeds.at(3));
 
     try {
         drivers_.at(DriverNames::REAR_LEFT)->getMotorDriver(MotorNames::DEFAULT)->sendCmdVel(speed_rear_left);
         drivers_.at(DriverNames::REAR_RIGHT)->getMotorDriver(MotorNames::DEFAULT)->sendCmdVel(speed_rear_right);
+        drivers_.at(DriverNames::FRONT_LEFT)->getMotorDriver(MotorNames::DEFAULT)->sendCmdVel(speed_front_left);
+        drivers_.at(DriverNames::FRONT_RIGHT)->getMotorDriver(MotorNames::DEFAULT)->sendCmdVel(speed_front_right);
     } catch (const std::runtime_error & e) {
         throw std::runtime_error("Driver send cmd failed: " + std::string(e.what()));
     }
@@ -61,18 +65,27 @@ void RoverA1Driver::defineDrivers()
 {  
     auto rear_left_driver = std::make_shared<PhidgetDriver>();
     auto rear_right_driver = std::make_shared<PhidgetDriver>();
+    auto front_left_driver = std::make_shared<PhidgetDriver>();
+    auto front_right_driver = std::make_shared<PhidgetDriver>();
 
     auto rear_left_motor_driver = std::make_shared<PhidgetMotorDriver>(
         std::dynamic_pointer_cast<PhidgetDriver>(rear_left_driver), 0, -1);
     auto rear_right_motor_driver = std::make_shared<PhidgetMotorDriver>(
         std::dynamic_pointer_cast<PhidgetDriver>(rear_right_driver), 1, -1);
-
+    auto front_left_motor_driver = std::make_shared<PhidgetMotorDriver>(
+        std::dynamic_pointer_cast<PhidgetDriver>(front_left_driver), 2, -1);
+    auto front_right_motor_driver = std::make_shared<PhidgetMotorDriver>(
+        std::dynamic_pointer_cast<PhidgetDriver>(front_right_driver), 3, -1);
+    
     rear_left_driver->addMotorDriver(MotorNames::DEFAULT, rear_left_motor_driver);
     rear_right_driver->addMotorDriver(MotorNames::DEFAULT, rear_right_motor_driver);
+    front_left_driver->addMotorDriver(MotorNames::DEFAULT, front_left_motor_driver);
+    front_right_driver->addMotorDriver(MotorNames::DEFAULT, front_right_motor_driver);
 
     drivers_.emplace(DriverNames::REAR_LEFT, rear_left_driver);
     drivers_.emplace(DriverNames::REAR_RIGHT, rear_right_driver);
+    drivers_.emplace(DriverNames::FRONT_LEFT, front_left_driver);
+    drivers_.emplace(DriverNames::FRONT_RIGHT, front_right_driver);
 }
 
 }  // namespace rover_hardware_interface
-

@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
+
 #include <rclcpp/logging.hpp>
 
 #include "rover_hardware_interface/rover_driver/rover_a1_driver.hpp"
@@ -324,6 +325,9 @@ void RoverSystem::configureRoverDriver()
         throw std::runtime_error("Rover drivers initialization failed.");
     }
 
+    rover_controller_ = std::make_shared<RoverController>();
+    rover_controller_->start();
+    
     RCLCPP_INFO(logger_, "Successfully configured rover driver");
 }
 

@@ -44,7 +44,7 @@ pkg_check_modules(LIBGPIOD REQUIRED IMPORTED_TARGET libgpiodcxx)
 
 add_library(
     ${PROJECT_NAME} SHARED
-    src/phidget_imu_sensor/phidget_imu_sensor.cpp
+    src/rover_sensors/phidget_imu_sensor.cpp
     src/rover_driver/phidget_driver/phidget_utils.cpp
     src/rover_driver/phidget_driver/phidget_motor_driver.cpp
     src/rover_driver/phidget_driver/phidget_rover_driver.cpp
@@ -54,6 +54,8 @@ add_library(
     src/rover_system/rover_system.cpp
     src/system_ros_interface/system_ros_interface.cpp
     src/utils.cpp
+    src/rover_modbus/modbus.cpp
+    src/rover_controller/rover_controller.cpp
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
@@ -61,6 +63,7 @@ ament_target_dependencies(${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
 target_link_libraries(
     ${PROJECT_NAME} PkgConfig::LIBLELY_COAPP
                     PkgConfig::LIBGPIOD phidgets_spatial_parameters
+                    Modbus_Core
 )
 
 target_compile_definitions(

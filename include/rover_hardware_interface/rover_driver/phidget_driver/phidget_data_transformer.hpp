@@ -52,9 +52,15 @@ public:
 
     virtual ~FlagError() = default;
 
-    void setData(const std::uint8_t flags) { flags_ = flags; }
+    void setData(const std::uint8_t flags) 
+    { 
+        flags_ = flags; 
+    }
 
-    bool isError() const { return (flags_ & (~suppressed_flags_)).any(); }
+    bool isError() const 
+    {
+        return (flags_ & (~suppressed_flags_)).any(); 
+    }
 
     std::string getErrorLog() const;
 

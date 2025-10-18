@@ -33,6 +33,8 @@
 #include "rover_hardware_interface/rover_driver/rover_driver.hpp"
 #include "rover_hardware_interface/system_ros_interface/system_ros_interface.hpp"
 
+#include "rover_hardware_interface/rover_controller/rover_controller.hpp"
+
 namespace rover_hardware_interface
 {
 
@@ -103,6 +105,8 @@ protected:
     // Rover driver interface
     std::shared_ptr<RoverDriverInterface> rover_driver_;
     
+    std::shared_ptr<RoverController> rover_controller_;
+
     // Drive train system settings
     DrivetrainSettings drivetrain_settings_;
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rover_hardware_interface/phidget_imu_sensor/phidget_imu_sensor.hpp"
+#include "rover_hardware_interface/rover_sensors/phidget_imu_sensor.hpp"
 
 #include <array>
 #include <chrono>
@@ -118,7 +118,7 @@ CallbackReturn PhidgetImuSensor::on_activate(const rclcpp_lifecycle::State &)
     try {
         if (!spatial_) {
             spatial_ = std::make_unique<phidgets::Spatial>(
-            params_.serial, 2, false,
+            params_.serial, -1, false,
             std::bind(&PhidgetImuSensor::spatialDataCallback, this, _1, _2, _3, _4), nullptr,
             std::bind(&PhidgetImuSensor::spatialAttachCallback, this),
             std::bind(&PhidgetImuSensor::spatialDetachCallback, this));
