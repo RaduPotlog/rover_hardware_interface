@@ -20,34 +20,40 @@
 namespace rover_hardware_interface
 {
 
-enum class ContactStatus
+enum class Contact
 {
-    CONTACT_OFF = 0,
-    CONTACT_ON,
+    CONTACT_0 = 0,
+    CONTACT_1,
+    CONTACT_2,
+    CONTACT_3,
+    CONTACT_4,
+    CONTACT_5,
+    CONTACT_6,
+    CONTACT_7,
 };
 
-enum class CoilCommand
+enum class Coil
 {
-    COIL_DISENGAGE = 0,
-    COIL_ENGAGE,
-};
-
-enum class COIL_STATE
-{
-    COIL_NOT_ENGAGED = 0,
-    COIL_ENGAGED,
+    COIL_0 = 0,
+    COIL_1,
+    COIL_2,
+    COIL_3,
+    COIL_4,
+    COIL_5,
+    COIL_6,
+    COIL_7,
 };
 
 struct ContactInfo
 {
-    uint8_t modbus_offset;
+    Contact contact;
 };
 
 struct CoilInfo
 {
+    const Coil coil;
     const bool default_coil_state;
     const bool is_coil_engage_allowed;
-    const uint8_t modbus_offset;
 };
 
 }  // namespace rover_hardware_interface

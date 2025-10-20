@@ -82,8 +82,12 @@ SystemROSInterface::SystemROSInterface(const std::string & node_name, const rclc
     driver_state_publisher_ = node_->create_publisher<RoverDriverStateMsg>("hardware_interface/rover_driver_state", 5);
     realtime_driver_state_publisher_ = std::make_unique<realtime_tools::RealtimePublisher<RoverDriverStateMsg>>(driver_state_publisher_);
 
+    gpio_state_publisher_ = node_->create_publisher<GpioStateMsg>("hardware_interface/gpio_state", rclcpp::QoS(rclcpp::KeepLast(1)).transient_local().reliable());
+    realtime_gpio_state_publisher_ = std::make_unique<realtime_tools::RealtimePublisher<GpioStateMsg>>(gpio_state_publisher_);
+    
     diagnostic_updater_.setHardwareID("Rover System");
 
+    
     RCLCPP_INFO(rclcpp::get_logger("RoverSystem"), "Node constructed successfully.");
 }
 
@@ -137,6 +141,53 @@ void SystemROSInterface::publishRobotDriverState()
     if (realtime_driver_state_publisher_->trylock()) {
         realtime_driver_state_publisher_->unlockAndPublish();
     }
+}
+
+void SystemROSInterface::updateMsgGpioStates(
+    const std::unordered_map<RoverControllerGpio, bool> & pin_state)
+{
+    for (const auto & [pin, pin_value] : pin_state) {
+        updateGpioStateMsg(pin, pin_value);
+    }
+}
+
+void SystemROSInterface::publishGpioStateMsg()
+{
+    if (realtime_gpio_state_publisher_->trylock()) {
+        realtime_gpio_state_publisher_->unlockAndPublish();
+    }
+}
+
+bool SystemROSInterface::updateGpioStateMsg(const RoverControllerGpio pin, const bool pin_value)
+{
+    auto & pin_state_msg = realtime_gpio_state_publisher_->msg_;
+
+    switch (pin) {
+        case RoverControllerGpio::GPIO_HW_E_STOP_USER_BTN:
+            pin_state_msg.gpio_pin_hw_e_stop_user_button = pin_value;
+            break;
+        case RoverControllerGpio::GPIO_MOTOR_CONTACTOR_ENGAGED:
+            pin_state_msg.gpio_pin_motor_contactor_engaged = pin_value;
+            break;
+        case RoverControllerGpio::GPIO_SW_E_STOP_CPU_WDG_TRIGGER:
+            pin_state_msg.gpio_pin_sw_e_stop_cpu_wdg_trigger = pin_value;
+            break;
+        case RoverControllerGpio::GPIO_SW_E_STOP_USER_BUTTON:
+            pin_state_msg.gpio_pin_sw_e_stop_user_button = pin_value;
+            break;
+        case RoverControllerGpio::GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT:
+            pin_state_msg.gpio_pin_sw_e_stop_motor_driver_fault = pin_value;
+            break;
+        case RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET:
+            pin_state_msg.gpio_pin_sw_e_stop_latch_reset = pin_value;
+            break;
+        
+        
+        default:
+            return false;
+    }
+
+    return true;
 }
 
 rclcpp::CallbackGroup::SharedPtr SystemROSInterface::getOrCreateNodeCallbackGroup(

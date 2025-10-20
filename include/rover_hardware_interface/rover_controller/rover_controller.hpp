@@ -54,9 +54,17 @@ public:
     // SW E-STOP LATCH RESET - sw_e_stop_latch_reset
     void eStopLatchReset();
 
+    std::unordered_map<RoverControllerGpio, bool> getIoState();
+
 private:
     
     void initCoils();
+    
+    bool readDiscreteContact(const ContactInfo &contact);
+
+    bool readDiscreteCoil(const CoilInfo &coil);
+
+    std::unordered_map<RoverControllerGpio, bool> queryControlInterfaceIOStates();
 
     void contactCoilHandlerThread();
 
@@ -68,6 +76,10 @@ private:
     static const std::vector<RoverControllerContactInfo> contacts_config_info_storage_;
     static const std::vector<RoverControllerCoilInfo> coils_config_info_storage_;
 
+    std::mutex write_to_modbus_mtx_;
+
+    std::unordered_map<RoverControllerGpio, bool> io_state_;
+    
     rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
 };
 
@@ -90,12 +102,12 @@ public:
     // SW E-STOP LATCH RESET - sw_e_stop_latch_reset
     void eStopLatchReset();
 
-protected:
-  
-    std::unique_ptr<ContactCoilHandler> contactCoilHandler_;
+    std::unordered_map<RoverControllerGpio, bool> queryControlInterfaceIOStates() const;
 
 private:
-  
+    
+    std::unique_ptr<ContactCoilHandler> contactCoilHandler_;
+
     bool waitFor(std::chrono::milliseconds timeout);
 
     std::shared_ptr<RoverModbus> rover_modbus_;

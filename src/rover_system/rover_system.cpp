@@ -95,6 +95,10 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 
     system_ros_interface_ = std::make_unique<SystemROSInterface>("hardware_controller");
 
+    const auto gpio_state = rover_controller_->queryControlInterfaceIOStates();
+    system_ros_interface_->updateMsgGpioStates(gpio_state);
+    system_ros_interface_->publishGpioStateMsg();
+
     return CallbackReturn::SUCCESS;
 }
 
@@ -180,9 +184,14 @@ return_type RoverSystem::read(const rclcpp::Time & time, const rclcpp::Duration 
         updateDriverState();
         updateDriverStateMsg();
         system_ros_interface_->publishRobotDriverState();
+        
+        const auto gpio_state = rover_controller_->queryControlInterfaceIOStates();
+        system_ros_interface_->updateMsgGpioStates(gpio_state);
+        system_ros_interface_->publishGpioStateMsg();
+    
         next_driver_state_update_time_ = time + driver_states_update_period_;
     }
-
+    
     return return_type::OK;
 }
 
@@ -327,7 +336,9 @@ void RoverSystem::configureRoverDriver()
 
     rover_controller_ = std::make_shared<RoverController>();
     rover_controller_->start();
-    
+    rover_controller_->eStopUserBtnTrigger(false);
+    rover_controller_->eStopMotorDriverFaultTrigger(false);
+
     RCLCPP_INFO(logger_, "Successfully configured rover driver");
 }
 

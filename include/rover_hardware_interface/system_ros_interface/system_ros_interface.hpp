@@ -32,9 +32,13 @@
 
 #include "rover_msgs/msg/driver_state_named.hpp"
 #include "rover_msgs/msg/rover_driver_state.hpp"
+#include "rover_msgs/msg/gpio_state.hpp"
 
 #include "rover_hardware_interface/rover_driver/driver.hpp"
 #include "rover_hardware_interface/rover_driver/phidget_driver/phidget_data_transformer.hpp"
+
+#include "rover_hardware_interface/rover_modbus/modbus_types.hpp"
+#include "rover_hardware_interface/rover_controller/rover_controller_types.hpp"
 
 using namespace std::placeholders;
 
@@ -49,6 +53,7 @@ using TriggerSrv = std_srvs::srv::Trigger;
 // Rover messages
 using RoverDriverStateMsg = rover_msgs::msg::RoverDriverState;
 using DriverStateNamedMsg = rover_msgs::msg::DriverStateNamed;
+using GpioStateMsg = rover_msgs::msg::GpioState;
 
 template <typename SrvT, typename CallbackT>
 class ROSServiceWrapper
@@ -123,14 +128,21 @@ public:
 
     void publishRobotDriverState();
 
+    void updateMsgGpioStates(
+        const std::unordered_map<RoverControllerGpio, bool> & pin_state);
+
+    void publishGpioStateMsg();
+
 protected:
+
+    bool updateGpioStateMsg(const RoverControllerGpio pin, const bool pin_value);
 
     rclcpp::CallbackGroup::SharedPtr getOrCreateNodeCallbackGroup(const unsigned group_id, rclcpp::CallbackGroupType callback_group_type);
 
     DriverStateNamedMsg & getDriverStateByName(
         RoverDriverStateMsg & robot_driver_state, 
         const DriverNames name);
-
+    
     rclcpp::Node::SharedPtr node_;
     std::unordered_map<unsigned, rclcpp::CallbackGroup::SharedPtr> callback_groups_;
     rclcpp::executors::MultiThreadedExecutor::UniquePtr executor_;
@@ -138,6 +150,9 @@ protected:
 
     rclcpp::Publisher<RoverDriverStateMsg>::SharedPtr driver_state_publisher_;
     std::unique_ptr<realtime_tools::RealtimePublisher<RoverDriverStateMsg>>realtime_driver_state_publisher_;
+
+    rclcpp::Publisher<GpioStateMsg>::SharedPtr gpio_state_publisher_;
+    std::unique_ptr<realtime_tools::RealtimePublisher<GpioStateMsg>> realtime_gpio_state_publisher_;
 
     diagnostic_updater::Updater diagnostic_updater_;
 

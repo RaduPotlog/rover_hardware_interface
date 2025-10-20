@@ -23,42 +23,53 @@
 namespace rover_hardware_interface
 {
 
-enum class RoverControllerContact
+enum class RoverControllerGpio
 {
-    CONTACT_HW_E_STOP_USER_BTN = 0,
+    GPIO_HW_E_STOP_USER_BTN             = 0,
+    GPIO_1                              = 1,
+    GPIO_2                              = 2,
+    GPIO_3                              = 3,
+    GPIO_4                              = 4,
+    GPIO_5                              = 5,
+    GPIO_6                              = 6,
+    GPIO_7                              = 7,
+    
+    GPIO_MOTOR_CONTACTOR_ENGAGED        = 8,
+    GPIO_SW_E_STOP_CPU_WDG_TRIGGER      = 9,  // sw_e_stop_cpu_wdg_trigger
+    GPIO_SW_E_STOP_USER_BUTTON          = 10, // sw_e_stop_user_button
+    GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT   = 11, // sw_e_stop_motor_driver_faults
+    GPIO_SW_E_STOP_LATCH_RESET          = 12, // sw_e_stop_latch_reset
+    GPIO_13                             = 13,
+    GPIO_14                             = 14,
+    GPIO_15                             = 15,
 };
 
-enum class RoverControllerCoil
+const std::map<RoverControllerGpio, std::string> gpio_names_
 {
-    COIL_MOTOR_CONTACTOR_ENGAGED        = 0,
-    COIL_SW_E_STOP_CPU_WDG_TRIGGER      = 1, // sw_e_stop_cpu_wdg_trigger
-    COIL_SW_E_STOP_USER_BUTTON          = 2, // sw_e_stop_user_button
-    COIL_SW_E_STOP_MOTOR_DRIVER_FAULT   = 3, // sw_e_stop_motor_driver_faults
-    COIL_SW_E_STOP_LATCH_RESET          = 4, // sw_e_stop_latch_reset
+    { RoverControllerGpio::GPIO_HW_E_STOP_USER_BTN,             "GPIO_HW_E_STOP_USER_BTN"               },
+    { RoverControllerGpio::GPIO_MOTOR_CONTACTOR_ENGAGED,        "GPIO_MOTOR_CONTACTOR_ENGAGED"          },
+    { RoverControllerGpio::GPIO_SW_E_STOP_CPU_WDG_TRIGGER,      "GPIO_SW_E_STOP_CPU_WDG_TRIGGER"        },
+    { RoverControllerGpio::GPIO_SW_E_STOP_USER_BUTTON,          "GPIO_SW_E_STOP_USER_BUTTON"            },
+    { RoverControllerGpio::GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT,   "GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT"     },
+    { RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET,          "GPIO_SW_E_STOP_LATCH_RESET"            },
 };
 
-const std::map<RoverControllerContact, std::string> contacts_names_
+struct RoverControllerGpioInfo
 {
-    { RoverControllerContact::CONTACT_HW_E_STOP_USER_BTN, "CONTACT_HW_E_STOP_USER_BTN" },
+    const RoverControllerGpio pin;
+    bool value;
 };
 
-const std::map<RoverControllerCoil, std::string> coils_names_
+struct RoverControllerContactInfo
 {
-    { RoverControllerCoil::COIL_MOTOR_CONTACTOR_ENGAGED,        "COIL_MOTOR_CONTACTOR_ENGAGED"          },
-    { RoverControllerCoil::COIL_SW_E_STOP_CPU_WDG_TRIGGER,      "COIL_SW_E_STOP_CPU_WDG_TRIGGER"        },
-    { RoverControllerCoil::COIL_SW_E_STOP_USER_BUTTON,          "COIL_SW_E_STOP_USER_BUTTON"            },
-    { RoverControllerCoil::COIL_SW_E_STOP_MOTOR_DRIVER_FAULT,   "COIL_SW_E_STOP_MOTOR_DRIVER_FAULT"     },
-    { RoverControllerCoil::COIL_SW_E_STOP_LATCH_RESET,          "COIL_SW_E_STOP_LATCH_RESET"            },
+    const RoverControllerGpio pin;
+    const ContactInfo contact_info;
 };
 
-struct RoverControllerContactInfo 
+struct RoverControllerCoilInfo
 {
-    ContactInfo contact_info;
-};
-
-struct RoverControllerCoilInfo 
-{
-    CoilInfo coil_info;
+    const RoverControllerGpio pin;
+    const CoilInfo coil_info;
 };
 
 }  // namespace rover_hardware_interface
