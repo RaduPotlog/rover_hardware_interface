@@ -120,9 +120,12 @@ void ContactCoilHandler::eStopLatchReset()
 
 std::unordered_map<RoverControllerGpio, bool> ContactCoilHandler::getIoState()
 {
-    write_to_modbus_mtx_.lock();
-    std::unordered_map<RoverControllerGpio, bool> io_state = io_state_;
-    write_to_modbus_mtx_.unlock();
+    std::unordered_map<RoverControllerGpio, bool> io_state;
+
+    if (write_to_modbus_mtx_.try_lock()) {
+        std::lock_guard<std::mutex> e_stop_lck(write_to_modbus_mtx_, std::adopt_lock);
+        io_state = io_state_;
+    }
 
     return io_state;
 }
@@ -269,6 +272,12 @@ std::unordered_map<RoverControllerGpio, bool> RoverController::queryControlInter
 bool RoverController::isPinActive(const RoverControllerGpio pin)
 {
     std::unordered_map<RoverControllerGpio, bool> io_state;
+
+    if (!contactCoilHandler_->isContactCoilHandlerEnabled()) {
+        return false;
+    }
+
+    io_state = contactCoilHandler_->getIoState();
 
     return (io_state[pin] == true);
 }

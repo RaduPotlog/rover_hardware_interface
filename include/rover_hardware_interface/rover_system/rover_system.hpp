@@ -80,6 +80,7 @@ protected:
     void readDriverStatesUpdateFrequency();
     void readDriverInitAndActivationAttempts();
 
+    void configureRoverController();
     void configureRoverDriver();
     void configureEStop();
 

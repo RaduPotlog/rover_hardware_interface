@@ -75,6 +75,7 @@ CallbackReturn RoverSystem::on_init(const hardware_interface::HardwareComponentI
 CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 {
     try {
+        configureRoverController();
         configureRoverDriver();
         configureEStop();
     } catch (const std::runtime_error & e) {
@@ -116,11 +117,12 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 
 CallbackReturn RoverSystem::on_cleanup(const rclcpp_lifecycle::State &)
 {
+    rover_controller_.reset();
     rover_driver_->deinitialize();
     rover_driver_.reset();
-    
+    e_stop_.reset();
     system_ros_interface_.reset();
-
+    
     return CallbackReturn::SUCCESS;
 }
 
@@ -136,11 +138,12 @@ CallbackReturn RoverSystem::on_deactivate(const rclcpp_lifecycle::State &)
 
 CallbackReturn RoverSystem::on_shutdown(const rclcpp_lifecycle::State &)
 {
+    rover_controller_.reset();
     rover_driver_->deinitialize();
     rover_driver_.reset();
-
+    e_stop_.reset();
     system_ros_interface_.reset();
-
+    
     return CallbackReturn::SUCCESS;
 }
 
@@ -333,15 +336,20 @@ void RoverSystem::readDriverInitAndActivationAttempts()
         std::stoi(info_.hardware_parameters["max_rover_driver_activation_attempts"]);
 }
 
-void RoverSystem::configureRoverDriver()
+void RoverSystem::configureRoverController()
 {
     rover_driver_write_mtx_ = std::make_shared<std::mutex>();
-
     rover_controller_ = std::make_shared<RoverController>();
+
     rover_controller_->start();
     rover_controller_->eStopUserBtnTrigger(false);
     rover_controller_->eStopMotorDriverFaultTrigger(false);
 
+    RCLCPP_INFO(logger_, "Successfully configured rover controller.");
+}
+
+void RoverSystem::configureRoverDriver()
+{
     defineRoverDriver();
 
     if (!operationWithAttempts(
