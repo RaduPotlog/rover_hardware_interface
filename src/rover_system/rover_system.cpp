@@ -76,6 +76,7 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
 {
     try {
         configureRoverDriver();
+        configureEStop();
     } catch (const std::runtime_error & e) {
         RCLCPP_ERROR_STREAM(logger_, "Failed to initialize motors controllers. Error: " << e.what());
         return CallbackReturn::ERROR;
@@ -94,6 +95,17 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
     }
 
     system_ros_interface_ = std::make_unique<SystemROSInterface>("hardware_controller");
+
+    system_ros_interface_->addService<TriggerSrv, std::function<void()>>(
+        "hardware_interface/sw_user_e_stop_set", std::bind(&EmergencyStopInterface::setEStop, e_stop_), 1,
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    
+    auto e_stop_reset_qos = rclcpp::ServicesQoS();
+    e_stop_reset_qos.keep_last(1);
+    system_ros_interface_->addService<TriggerSrv, std::function<void()>>(
+        "hardware_interface/sw_user_e_stop_reset", std::bind(&RoverSystem::resetEStop, this), 2,
+        rclcpp::CallbackGroupType::MutuallyExclusive, e_stop_reset_qos);
+
 
     const auto gpio_state = rover_controller_->queryControlInterfaceIOStates();
     system_ros_interface_->updateMsgGpioStates(gpio_state);
@@ -325,6 +337,11 @@ void RoverSystem::configureRoverDriver()
 {
     rover_driver_write_mtx_ = std::make_shared<std::mutex>();
 
+    rover_controller_ = std::make_shared<RoverController>();
+    rover_controller_->start();
+    rover_controller_->eStopUserBtnTrigger(false);
+    rover_controller_->eStopMotorDriverFaultTrigger(false);
+
     defineRoverDriver();
 
     if (!operationWithAttempts(
@@ -334,12 +351,32 @@ void RoverSystem::configureRoverDriver()
         throw std::runtime_error("Rover drivers initialization failed.");
     }
 
-    rover_controller_ = std::make_shared<RoverController>();
-    rover_controller_->start();
-    rover_controller_->eStopUserBtnTrigger(false);
-    rover_controller_->eStopMotorDriverFaultTrigger(false);
-
     RCLCPP_INFO(logger_, "Successfully configured rover driver");
+}
+
+void RoverSystem::configureEStop()
+{
+    if (!rover_controller_ || !rover_driver_ || !rover_driver_write_mtx_) {
+        throw std::runtime_error("Failed to configure E-Stop, make sure to setup entities first.");
+    }
+
+    e_stop_ = std::make_shared<EmergencyStop>(
+        rover_controller_, rover_driver_, rover_driver_write_mtx_,
+        std::bind(&RoverSystem::areVelocityCommandsNearZero, this));
+
+    RCLCPP_INFO(logger_, "Successfully configured SW User E-Stop");
+}
+
+void RoverSystem::resetEStop()
+{
+    const auto lifecycle_state = this->get_lifecycle_state().id();
+
+    if (lifecycle_state != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+        throw std::runtime_error(
+            "Can't reset sw user E-Stop when the hardware interface is not in ACTIVE state.");
+    }
+
+    e_stop_->resetEStop();
 }
 
 void RoverSystem::updateMotorsState(const rclcpp::Time & time)
@@ -387,6 +424,17 @@ void RoverSystem::handleRoverDriverWriteOperation(std::function<void()> write_op
         
         // TODO: update error
     }
+}
+
+bool RoverSystem::areVelocityCommandsNearZero()
+{
+    for (const auto & cmd : hw_commands_velocities_) {
+        if (std::abs(cmd) > std::numeric_limits<double>::epsilon()) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 }  // namespace rover_hardware_interface

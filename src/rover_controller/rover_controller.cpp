@@ -266,6 +266,13 @@ std::unordered_map<RoverControllerGpio, bool> RoverController::queryControlInter
     return io_state;
 }
 
+bool RoverController::isPinActive(const RoverControllerGpio pin)
+{
+    std::unordered_map<RoverControllerGpio, bool> io_state;
+
+    return (io_state[pin] == true);
+}
+
 bool RoverController::waitFor(std::chrono::milliseconds timeout)
 {
     std::unique_lock<std::mutex> lck(e_stop_cv_mtx_);

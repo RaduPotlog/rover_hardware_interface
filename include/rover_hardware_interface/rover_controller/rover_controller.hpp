@@ -79,7 +79,7 @@ private:
     std::mutex write_to_modbus_mtx_;
 
     std::unordered_map<RoverControllerGpio, bool> io_state_;
-    
+
     rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
 };
 
@@ -103,6 +103,8 @@ public:
     void eStopLatchReset();
 
     std::unordered_map<RoverControllerGpio, bool> queryControlInterfaceIOStates() const;
+
+    bool isPinActive(const RoverControllerGpio pin);
 
 private:
     

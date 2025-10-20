@@ -34,6 +34,7 @@
 #include "rover_hardware_interface/system_ros_interface/system_ros_interface.hpp"
 
 #include "rover_hardware_interface/rover_controller/rover_controller.hpp"
+#include "rover_hardware_interface/system_e_stop/system_e_stop.hpp"
 
 namespace rover_hardware_interface
 {
@@ -80,7 +81,11 @@ protected:
     void readDriverInitAndActivationAttempts();
 
     void configureRoverDriver();
+    void configureEStop();
+
     virtual void defineRoverDriver() = 0;
+
+    void resetEStop();
 
     void updateMotorsState(const rclcpp::Time & time);
     void updateDriverState();
@@ -89,6 +94,8 @@ protected:
     virtual void updateDriverStateMsg() = 0;
   
     void handleRoverDriverWriteOperation(std::function<void()> write_operation);
+
+    bool areVelocityCommandsNearZero();
 
     virtual std::vector<float> getSpeedCmd() const = 0;
 
@@ -104,8 +111,10 @@ protected:
 
     // Rover driver interface
     std::shared_ptr<RoverDriverInterface> rover_driver_;
-    
+    // Rover safety controller interface
     std::shared_ptr<RoverController> rover_controller_;
+    // Rover emergency stop interface
+    std::shared_ptr<EmergencyStopInterface> e_stop_;
 
     // Drive train system settings
     DrivetrainSettings drivetrain_settings_;
