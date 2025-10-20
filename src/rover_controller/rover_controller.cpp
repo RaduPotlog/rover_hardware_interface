@@ -219,7 +219,7 @@ void ContactCoilHandler::contactCoilHandlerThread()
 
 RoverController::RoverController()
 {
-    rover_modbus_ = std::make_shared<RoverModbus>("192.168.1.11", 502);
+    rover_modbus_ = std::make_shared<RoverModbus>("192.168.88.11", 502);
 }
 
 void RoverController::start()
