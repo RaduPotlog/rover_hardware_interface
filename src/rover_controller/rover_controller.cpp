@@ -61,6 +61,11 @@ const std::vector<RoverControllerCoilInfo> ContactCoilHandler::coils_config_info
         RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET},
         CoilInfo { Coil::COIL_4, false, true},    
     },
+
+    RoverControllerCoilInfo { 
+        RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_LATCH_STATUS},
+        CoilInfo { Coil::COIL_5, false, false},    
+    },
 };
 
 ContactCoilHandler::ContactCoilHandler(std::shared_ptr<RoverModbus> rover_modbus)
@@ -115,7 +120,10 @@ void ContactCoilHandler::eStopMotorDriverFaultTrigger(const bool state)
 // SW E-STOP LATCH RESET - sw_e_stop_latch_reset
 void ContactCoilHandler::eStopLatchReset()
 {
-
+    write_to_modbus_mtx_.lock();
+    rover_modbus_->writeDiscreteCoil(coils_config_info_storage_[4].coil_info, true);
+    rover_modbus_->writeDiscreteCoil(coils_config_info_storage_[4].coil_info, false);
+    write_to_modbus_mtx_.unlock();
 }
 
 std::unordered_map<RoverControllerGpio, bool> ContactCoilHandler::getIoState()
@@ -155,46 +163,12 @@ std::unordered_map<RoverControllerGpio, bool> ContactCoilHandler::queryControlIn
 {
     std::unordered_map<RoverControllerGpio, bool> io_state;
 
-    std::vector<RoverControllerContactInfo> contacts_to_query = {
-        RoverControllerContactInfo {
-            RoverControllerGpio {RoverControllerGpio::GPIO_HW_E_STOP_USER_BTN},
-            ContactInfo { Contact::CONTACT_0 },
-        },
-    };
-
-    std::for_each(contacts_to_query.begin(), contacts_to_query.end(), [&](RoverControllerContactInfo contact) {
+    std::for_each(contacts_config_info_storage_.begin(), contacts_config_info_storage_.end(), [&](RoverControllerContactInfo contact) {
         bool is_active = readDiscreteContact(contact.contact_info);
         io_state.emplace(static_cast<RoverControllerGpio>(contact.pin), is_active);
     });
 
-    std::vector<RoverControllerCoilInfo> coil_to_query = {
-        RoverControllerCoilInfo { 
-            RoverControllerGpio {RoverControllerGpio::GPIO_MOTOR_CONTACTOR_ENGAGED},
-            CoilInfo { Coil::COIL_0, false, false},    
-        },
-
-        RoverControllerCoilInfo { 
-            RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_CPU_WDG_TRIGGER},
-            CoilInfo { Coil::COIL_1, true, true},
-        },
-        
-        RoverControllerCoilInfo { 
-            RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_USER_BUTTON},
-            CoilInfo { Coil::COIL_2, true, true},    
-        },
-        
-        RoverControllerCoilInfo { 
-            RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT},
-            CoilInfo { Coil::COIL_3, true, true},    
-        },
-
-        RoverControllerCoilInfo { 
-            RoverControllerGpio {RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET},
-            CoilInfo { Coil::COIL_4, false, true},    
-        },
-    };
-
-    std::for_each(coil_to_query.begin(), coil_to_query.end(), [&](RoverControllerCoilInfo coil) {
+    std::for_each(coils_config_info_storage_.begin(), coils_config_info_storage_.end(), [&](RoverControllerCoilInfo coil) {
         bool is_active = readDiscreteCoil(coil.coil_info);
         io_state.emplace(static_cast<RoverControllerGpio>(coil.pin), is_active);
     });
@@ -254,6 +228,8 @@ void RoverController::eStopLatchReset()
     if (!contactCoilHandler_->isContactCoilHandlerEnabled()) {
         return;
     }
+
+    contactCoilHandler_->eStopLatchReset();
 }
 
 std::unordered_map<RoverControllerGpio, bool> RoverController::queryControlInterfaceIOStates() const

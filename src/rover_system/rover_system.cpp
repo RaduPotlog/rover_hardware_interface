@@ -107,6 +107,11 @@ CallbackReturn RoverSystem::on_configure(const rclcpp_lifecycle::State &)
         "hardware_interface/sw_user_e_stop_reset", std::bind(&RoverSystem::resetEStop, this), 2,
         rclcpp::CallbackGroupType::MutuallyExclusive, e_stop_reset_qos);
 
+    auto e_stop_latch_reset_qos = rclcpp::ServicesQoS();
+    e_stop_latch_reset_qos.keep_last(1);
+    system_ros_interface_->addService<TriggerSrv, std::function<void()>>(
+        "hardware_interface/sw_e_stop_latch_reset", std::bind(&RoverSystem::resetEStopLatch, this), 2,
+        rclcpp::CallbackGroupType::MutuallyExclusive, e_stop_latch_reset_qos);
 
     const auto gpio_state = rover_controller_->queryControlInterfaceIOStates();
     system_ros_interface_->updateMsgGpioStates(gpio_state);
@@ -385,6 +390,18 @@ void RoverSystem::resetEStop()
     }
 
     e_stop_->resetEStop();
+}
+
+void RoverSystem::resetEStopLatch()
+{
+    const auto lifecycle_state = this->get_lifecycle_state().id();
+
+    if (lifecycle_state != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+        throw std::runtime_error(
+            "Can't reset E-Stop Latch when the hardware interface is not in ACTIVE state.");
+    }
+
+    e_stop_->resetEStopLatch();
 }
 
 void RoverSystem::updateMotorsState(const rclcpp::Time & time)

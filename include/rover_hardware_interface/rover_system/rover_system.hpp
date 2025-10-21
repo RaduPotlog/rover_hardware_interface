@@ -87,6 +87,7 @@ protected:
     virtual void defineRoverDriver() = 0;
 
     void resetEStop();
+    void resetEStopLatch();
 
     void updateMotorsState(const rclcpp::Time & time);
     void updateDriverState();

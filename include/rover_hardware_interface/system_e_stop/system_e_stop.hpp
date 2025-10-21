@@ -36,9 +36,13 @@ public:
 
     virtual bool readEStopState() = 0;
     
+    virtual bool readEStopLatchState() = 0;
+
     virtual void setEStop() = 0;
     
     virtual void resetEStop() = 0;
+
+    virtual void resetEStopLatch() = 0;
 };
 
 class EmergencyStop : public EmergencyStopInterface
@@ -50,20 +54,19 @@ public:
         std::shared_ptr<RoverController> rover_controller,
         std::shared_ptr<RoverDriverInterface> rover_driver,
         std::shared_ptr<std::mutex> rover_driver_write_mtx, 
-        std::function<bool()> zero_velocity_check)
-    : EmergencyStopInterface()
-    , rover_controller_(rover_controller)
-    , rover_driver_(rover_driver)
-    , rover_driver_write_mtx_(rover_driver_write_mtx)
-    , zeroVelocityCheck(zero_velocity_check) {};
+        std::function<bool()> zero_velocity_check);
 
     virtual ~EmergencyStop() override = default;
 
     bool readEStopState() override;
 
+    bool readEStopLatchState() override;
+
     void setEStop() override;
 
     void resetEStop() override;
+
+    void resetEStopLatch() override;
 
 protected:
 

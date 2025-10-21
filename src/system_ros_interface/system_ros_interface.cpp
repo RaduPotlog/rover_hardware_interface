@@ -181,8 +181,9 @@ bool SystemROSInterface::updateGpioStateMsg(const RoverControllerGpio pin, const
         case RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET:
             pin_state_msg.gpio_pin_sw_e_stop_latch_reset = pin_value;
             break;
-        
-        
+        case RoverControllerGpio::GPIO_SW_E_STOP_LATCH_STATUS:
+            pin_state_msg.gpio_pin_sw_e_stop_latch_status = pin_value;
+            break;
         default:
             return false;
     }

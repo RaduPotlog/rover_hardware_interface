@@ -39,7 +39,7 @@ enum class RoverControllerGpio
     GPIO_SW_E_STOP_USER_BUTTON          = 10, // sw_e_stop_user_button
     GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT   = 11, // sw_e_stop_motor_driver_faults
     GPIO_SW_E_STOP_LATCH_RESET          = 12, // sw_e_stop_latch_reset
-    GPIO_13                             = 13,
+    GPIO_SW_E_STOP_LATCH_STATUS         = 13, // sw_e_stop_latch_status
     GPIO_14                             = 14,
     GPIO_15                             = 15,
 };
@@ -52,6 +52,7 @@ const std::map<RoverControllerGpio, std::string> gpio_names_
     { RoverControllerGpio::GPIO_SW_E_STOP_USER_BUTTON,          "GPIO_SW_E_STOP_USER_BUTTON"            },
     { RoverControllerGpio::GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT,   "GPIO_SW_E_STOP_MOTOR_DRIVER_FAULT"     },
     { RoverControllerGpio::GPIO_SW_E_STOP_LATCH_RESET,          "GPIO_SW_E_STOP_LATCH_RESET"            },
+    { RoverControllerGpio::GPIO_SW_E_STOP_LATCH_STATUS,         "GPIO_SW_E_STOP_LATCH_STATUS"           }
 };
 
 struct RoverControllerGpioInfo
