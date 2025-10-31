@@ -169,11 +169,18 @@ void CCONV PhidgetMotorDriver::setTargetVelocityHandler(
 void PhidgetMotorDriver::sendCmdVel(const float cmd)
 {
     if (auto driver = driver_.lock()) {
-        PhidgetDCMotor_setTargetVelocity_async(
+        // PhidgetDCMotor_setTargetVelocity_async(
+        //     motor_handle_, 
+        //     cmd, 
+        //     PhidgetMotorDriver::setTargetVelocityHandler, 
+        //     this);
+        PhidgetDCMotor_setTargetVelocity(
             motor_handle_, 
-            cmd, 
-            PhidgetMotorDriver::setTargetVelocityHandler, 
-            this);
+            cmd 
+            // PhidgetMotorDriver::setTargetVelocityHandler, 
+            // this
+            );
+        
     }
 }
 

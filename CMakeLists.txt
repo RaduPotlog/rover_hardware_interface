@@ -39,9 +39,6 @@ generate_parameter_library(phidgets_spatial_parameters
 set(ENV{PKG_CONFIG_PATH}
     "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 
-pkg_check_modules(LIBLELY_COAPP REQUIRED IMPORTED_TARGET liblely-coapp)
-pkg_check_modules(LIBGPIOD REQUIRED IMPORTED_TARGET libgpiodcxx)
-
 add_library(
     ${PROJECT_NAME} SHARED
     src/rover_sensors/phidget_imu_sensor.cpp
@@ -62,8 +59,7 @@ add_library(
 ament_target_dependencies(${PROJECT_NAME} ${PACKAGE_DEPENDENCIES})
 
 target_link_libraries(
-    ${PROJECT_NAME} PkgConfig::LIBLELY_COAPP
-                    PkgConfig::LIBGPIOD phidgets_spatial_parameters
+    ${PROJECT_NAME} phidgets_spatial_parameters
                     Modbus_Core
 )
 
