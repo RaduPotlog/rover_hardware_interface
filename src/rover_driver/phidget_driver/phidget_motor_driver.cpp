@@ -96,10 +96,12 @@ std::shared_ptr<MotorDriverInterface> PhidgetDriver::getMotorDriver(const MotorN
 PhidgetMotorDriver::PhidgetMotorDriver(
     std::weak_ptr<PhidgetDriver> driver, 
     const std::uint8_t channel, 
-    const std::int32_t serial_number)
+    const std::int32_t serial_number,
+    const bool dir_reverse)
 : driver_(driver)
 , channel_(channel)
 , serial_number_(serial_number)
+, direction_reversed(dir_reverse)
 {
     RCLCPP_INFO(logger_, "Create phidget motor driver channel = %d", channel_);
 }
@@ -136,6 +138,32 @@ void PhidgetMotorDriver::initialize()
     // Try to reset fail safe
     (void)PhidgetDCMotor_resetFailsafe(motor_handle_);
 	
+    // Set acceleration
+    ret = PhidgetDCMotor_setAcceleration(motor_handle_, 1.0f);
+
+    if (ret != EPHIDGET_OK) {
+        throw std::runtime_error("Failed to set acceleration for motor channel " + 
+            std::to_string(channel_));
+    }
+
+    // Set current limit
+    ret = PhidgetDCMotor_setCurrentLimit(motor_handle_, 15.0);
+
+    if (ret != EPHIDGET_OK) {
+        throw std::runtime_error("Failed to set current limit for motor channel " + 
+            std::to_string(channel_));
+    }
+
+    /*
+     *  CurrentRegulatorGain = CurrentLimit * (Voltage / 12)
+     */
+    ret = PhidgetDCMotor_setCurrentRegulatorGain(motor_handle_, 15.0);
+
+    if (ret != EPHIDGET_OK) {
+        throw std::runtime_error("Failed to set current regulator gain for motor channel " + 
+            std::to_string(channel_));
+    }
+
     // Enable fail safe
     ret = PhidgetDCMotor_enableFailsafe(motor_handle_, 5000);
 
@@ -174,9 +202,17 @@ void PhidgetMotorDriver::sendCmdVel(const float cmd)
         //     cmd, 
         //     PhidgetMotorDriver::setTargetVelocityHandler, 
         //     this);
+        float cmd_temp = 0.0f;
+
+        if (direction_reversed) {
+            cmd_temp = cmd * (-1.0);
+        } else {
+            cmd_temp = cmd;
+        }
+
         PhidgetDCMotor_setTargetVelocity(
             motor_handle_, 
-            cmd 
+            cmd_temp 
             // PhidgetMotorDriver::setTargetVelocityHandler, 
             // this
             );

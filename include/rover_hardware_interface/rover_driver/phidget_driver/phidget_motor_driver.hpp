@@ -64,7 +64,11 @@ class PhidgetMotorDriver : public MotorDriverInterface
 
 public:
 
-    PhidgetMotorDriver(std::weak_ptr<PhidgetDriver> driver, const std::uint8_t channel, const std::int32_t serial_number);
+    PhidgetMotorDriver(
+        std::weak_ptr<PhidgetDriver> driver, 
+        const std::uint8_t channel, 
+        const std::int32_t serial_number, 
+        const bool dir_reverse);
 
     ~PhidgetMotorDriver();
 
@@ -84,6 +88,8 @@ private:
     std::int32_t serial_number_;
 
     PhidgetDCMotorHandle motor_handle_{nullptr};
+
+    bool direction_reversed;
 
     rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
 };
