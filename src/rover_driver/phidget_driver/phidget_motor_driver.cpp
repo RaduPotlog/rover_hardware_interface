@@ -190,18 +190,19 @@ void CCONV PhidgetMotorDriver::setTargetVelocityHandler(
     PhidgetReturnCode res) 
 {
     (void)phid;
-    (void)ctx;
     (void)res;
+
+    PhidgetMotorDriver * driver = static_cast<PhidgetMotorDriver*>(ctx);
+
+    driver->set_speed_done_ = false;
 }
 
 void PhidgetMotorDriver::sendCmdVel(const float cmd)
 {
     if (auto driver = driver_.lock()) {
-        // PhidgetDCMotor_setTargetVelocity_async(
-        //     motor_handle_, 
-        //     cmd, 
-        //     PhidgetMotorDriver::setTargetVelocityHandler, 
-        //     this);
+
+        if (set_speed_done_) return;
+        
         float cmd_temp = 0.0f;
 
         if (direction_reversed) {
@@ -210,13 +211,13 @@ void PhidgetMotorDriver::sendCmdVel(const float cmd)
             cmd_temp = cmd;
         }
 
-        PhidgetDCMotor_setTargetVelocity(
+        PhidgetDCMotor_setTargetVelocity_async(
             motor_handle_, 
-            cmd_temp 
-            // PhidgetMotorDriver::setTargetVelocityHandler, 
-            // this
-            );
+            cmd_temp, 
+            PhidgetMotorDriver::setTargetVelocityHandler, 
+            this);
         
+        set_speed_done_ = true;
     }
 }
 

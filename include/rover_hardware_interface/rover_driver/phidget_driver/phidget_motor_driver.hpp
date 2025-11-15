@@ -91,6 +91,8 @@ private:
 
     bool direction_reversed;
 
+    std::atomic<bool> set_speed_done_{false}; 
+
     rclcpp::Logger logger_{rclcpp::get_logger("RoverSystem")};
 };
 
